@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { userService } from '../services/api';
 import { User } from '../types';
+import { User as UserIcon, Mail, Lock, Phone, MapPin } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -43,168 +44,185 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl w-full space-y-8 bg-white p-8 rounded-lg shadow">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
-              Sign in
-            </Link>
-          </p>
-        </div>
-        
-        {error && <div className="bg-red-50 text-red-600 p-3 rounded text-sm text-center">{error}</div>}
+    <div className="min-h-[100vh] flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md animate-fade-in">
+        {/* Glass morphism card */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20 shadow-2xl">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 mb-4">
+              <UserIcon className="h-6 w-6 text-white" />
+            </div>
+            <h2 className="text-3xl font-bold text-white">Create Account</h2>
+            <p className="mt-2 text-sm text-gray-300">
+              Join our engineering community
+            </p>
+          </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-            
-            <div className="sm:col-span-3">
-              <label htmlFor="firstname" className="block text-sm font-medium text-gray-700">First name</label>
-              <div className="mt-1">
+          {error && (
+            <div className="text-red-300 text-sm bg-red-500/20 border border-red-500/30 p-3 rounded-lg mb-6 animate-pulse">
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            {/* Name Fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative group">
                 <input
                   type="text"
                   name="firstname"
                   id="firstname"
                   required
+                  placeholder="First name"
                   value={formData.firstname || ''}
                   onChange={handleChange}
-                  className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
                 />
               </div>
-            </div>
-
-            <div className="sm:col-span-3">
-              <label htmlFor="lastname" className="block text-sm font-medium text-gray-700">Last name</label>
-              <div className="mt-1">
+              <div className="relative group">
                 <input
                   type="text"
                   name="lastname"
                   id="lastname"
                   required
+                  placeholder="Last name"
                   value={formData.lastname || ''}
                   onChange={handleChange}
-                  className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
                 />
               </div>
             </div>
 
-            <div className="sm:col-span-3">
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
-              <div className="mt-1">
+            {/* Username */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <UserIcon className="h-5 w-5 text-gray-400 group-focus-within:text-green-400 transition-colors" />
+              </div>
+              <input
+                type="text"
+                name="username"
+                id="username"
+                required
+                placeholder="Username"
+                value={formData.username}
+                onChange={handleChange}
+                className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-green-400 transition-colors" />
+              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                placeholder="Email address"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+              />
+            </div>
+
+            {/* Password */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-green-400 transition-colors" />
+              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                placeholder="Password"
+                value={password}
+                onChange={handleChange}
+                className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+              />
+            </div>
+
+            {/* Phone */}
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Phone className="h-5 w-5 text-gray-400 group-focus-within:text-green-400 transition-colors" />
+              </div>
+              <input
+                type="tel"
+                name="phone"
+                id="phone"
+                placeholder="Phone number (optional)"
+                value={formData.phone || ''}
+                onChange={handleChange}
+                className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+              />
+            </div>
+
+            {/* Location Fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <MapPin className="h-5 w-5 text-gray-400 group-focus-within:text-green-400 transition-colors" />
+                </div>
                 <input
                   type="text"
-                  name="username"
-                  id="username"
-                  required
-                  value={formData.username}
+                  name="country"
+                  id="country"
+                  placeholder="Country"
+                  value={formData.country || ''}
                   onChange={handleChange}
-                  className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2"
+                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
                 />
               </div>
+              <input
+                type="text"
+                name="postal_code"
+                id="postal_code"
+                placeholder="Postal code"
+                value={formData.postal_code || ''}
+                onChange={handleChange}
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+              />
             </div>
 
-            <div className="sm:col-span-3">
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone</label>
-                <div className="mt-1">
-                    <input
-                    type="tel"
-                    name="phone"
-                    id="phone"
-                    value={formData.phone || ''}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2"
-                    />
-                </div>
-            </div>
+            {/* Address */}
+            <input
+              type="text"
+              name="address"
+              id="address"
+              placeholder="Address (optional)"
+              value={formData.address || ''}
+              onChange={handleChange}
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+            />
 
-            <div className="sm:col-span-6">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2"
-                />
-              </div>
-            </div>
-
-            <div className="sm:col-span-6">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={handleChange}
-                  className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2"
-                />
-              </div>
-            </div>
-
-             <div className="sm:col-span-3">
-                <label htmlFor="country" className="block text-sm font-medium text-gray-700">Country</label>
-                <div className="mt-1">
-                    <input
-                    type="text"
-                    name="country"
-                    id="country"
-                    value={formData.country || ''}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2"
-                    />
-                </div>
-            </div>
-
-             <div className="sm:col-span-3">
-                <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700">Postal Code</label>
-                <div className="mt-1">
-                    <input
-                    type="text"
-                    name="postal_code"
-                    id="postal_code"
-                    value={formData.postal_code || ''}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2"
-                    />
-                </div>
-            </div>
-
-             <div className="sm:col-span-6">
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
-                <div className="mt-1">
-                    <input
-                    type="text"
-                    name="address"
-                    id="address"
-                    value={formData.address || ''}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md border p-2"
-                    />
-                </div>
-            </div>
-
-          </div>
-
-          <div>
+            {/* Sign Up Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 mt-6"
             >
-              {loading ? 'Creating account...' : 'Sign up'}
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                  Creating account...
+                </span>
+              ) : (
+                'Create account'
+              )}
             </button>
-          </div>
-        </form>
+          </form>
+
+          {/* Sign In Link */}
+          <p className="mt-6 text-center text-sm text-gray-300">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-green-400 hover:text-green-300 transition-colors">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

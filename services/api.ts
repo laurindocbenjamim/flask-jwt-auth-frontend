@@ -39,21 +39,43 @@ export const authService = {
 
   logout: async (): Promise<GenericResponse> => {
     const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: 'GET', // README says GET or DELETE
+      method: 'POST',
       headers: getHeaders(),
     });
     return handleResponse<GenericResponse>(response);
   },
 
-  googleLogin: async (idToken: string): Promise<{ success: boolean; redirect: string }> => {
-    const formData = new FormData();
-    formData.append('id_token', idToken);
-    
-    const response = await fetch(`${API_BASE_URL}/auth2/google/signin`, {
-      method: 'POST',
-      body: formData,
+  googleLogin: async (): Promise<void> => {
+    // Redirect to backend's Google OAuth endpoint
+    // Backend will handle the OAuth flow and redirect back after authentication
+    window.location.href = `${API_BASE_URL}/auth2/google/login`;
+  },
+
+  googleLogout: async (): Promise<GenericResponse> => {
+    const response = await fetch(`${API_BASE_URL}/auth2/google/logout`, {
+      method: 'GET',
+      headers: getHeaders(),
     });
-    return handleResponse<{ success: boolean; redirect: string }>(response);
+    return handleResponse<GenericResponse>(response);
+  },
+
+  githubLogin: async (): Promise<void> => {
+    // Redirect to backend's GitHub OAuth endpoint
+    // Backend will handle the OAuth flow and redirect back after authentication
+    window.location.href = `${API_BASE_URL}/auth2/github/login`;
+  },
+
+  githubSignIn: async (): Promise<void> => {
+    // Alternative signin endpoint
+    window.location.href = `${API_BASE_URL}/auth2/github/signin`;
+  },
+
+  githubLogout: async (): Promise<GenericResponse> => {
+    const response = await fetch(`${API_BASE_URL}/auth2/github/logout`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    return handleResponse<GenericResponse>(response);
   },
 };
 

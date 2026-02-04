@@ -35,7 +35,7 @@ The application configuration is located in `config.ts`.
 
 ```typescript
 export const config = {
-  API_BASE_URL: 'https://172.22.0.3:8443/api/v1',
+  API_BASE_URL: 'https://172.27.0.3:8443/api/v1',
 };
 ```
 
