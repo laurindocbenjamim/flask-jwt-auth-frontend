@@ -66,18 +66,41 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Also handle hash-based params if backend redirects to the hash part
-    const hash = window.location.hash;
-    if (hash.includes('?')) {
-      const queryPart = hash.split('?')[1];
-      const hashParams = new URLSearchParams(queryPart);
-      const hashToken = hashParams.get('token') || hashParams.get('access_token');
-      if (hashToken) {
-        localStorage.setItem('access_token', hashToken);
-        const newHash = hash.split('?')[0];
-        window.location.hash = newHash;
+    // Handle tokens in URL after OAuth redirect
+    const handleUrlToken = () => {
+      const hash = window.location.hash;
+      const search = window.location.search;
+
+      let token = null;
+
+      // 1. Try search parameters (?token=...)
+      if (search) {
+        const params = new URLSearchParams(search);
+        token = params.get('token') || params.get('access_token');
       }
-    }
+
+      // 2. Try hash parameters (#/path?token=...)
+      if (!token && hash.includes('?')) {
+        const queryPart = hash.split('?')[1];
+        const params = new URLSearchParams(queryPart);
+        token = params.get('token') || params.get('access_token');
+      }
+
+      if (token) {
+        localStorage.setItem('access_token', token);
+
+        // Clean up URL
+        if (search) {
+          const newUrl = window.location.pathname + window.location.hash;
+          window.history.replaceState({}, document.title, newUrl);
+        } else if (hash.includes('?')) {
+          const newHash = hash.split('?')[0];
+          window.location.hash = newHash;
+        }
+      }
+    };
+
+    handleUrlToken();
     checkAuth();
   }, []);
 

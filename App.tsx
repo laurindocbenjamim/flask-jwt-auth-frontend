@@ -62,9 +62,20 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        {/* Redirect for backend OAuth callback path */}
-        <Route path="admin/user" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Specific path for backend OAuth callback redirect */}
+        <Route
+          path="admin/user"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
       </Route>
+
+      {/* Catch-all */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
