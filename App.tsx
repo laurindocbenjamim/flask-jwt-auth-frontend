@@ -37,31 +37,33 @@ const AppRoutes = () => {
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
-        
+
         {/* Portfolio Routes */}
         <Route path="about" element={<About />} />
         <Route path="projects" element={<Projects />} />
         <Route path="experiences" element={<Experiences />} />
 
         {/* Protected Routes */}
-        <Route 
-          path="dashboard" 
+        <Route
+          path="dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
-          } 
+          }
         />
-        
+
         {/* Admin Routes */}
-        <Route 
-          path="admin" 
+        <Route
+          path="admin"
           element={
             <ProtectedRoute requireAdmin={true}>
               <AdminDashboard />
             </ProtectedRoute>
-          } 
+          }
         />
+        {/* Redirect for backend OAuth callback path */}
+        <Route path="admin/user" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   );

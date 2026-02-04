@@ -18,6 +18,17 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
   const [status, setStatus] = useState<AuthStatus>(AuthStatus.IDLE);
 
   const checkAuth = async () => {
+    // Check for tokens in URL (OAuth redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token') || urlParams.get('access_token');
+
+    if (urlToken) {
+      localStorage.setItem('access_token', urlToken);
+      // Clean up the URL
+      const newUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+
     const token = localStorage.getItem('access_token');
     if (!token) {
       setStatus(AuthStatus.UNAUTHENTICATED);
@@ -55,6 +66,18 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   useEffect(() => {
+    // Also handle hash-based params if backend redirects to the hash part
+    const hash = window.location.hash;
+    if (hash.includes('?')) {
+      const queryPart = hash.split('?')[1];
+      const hashParams = new URLSearchParams(queryPart);
+      const hashToken = hashParams.get('token') || hashParams.get('access_token');
+      if (hashToken) {
+        localStorage.setItem('access_token', hashToken);
+        const newHash = hash.split('?')[0];
+        window.location.hash = newHash;
+      }
+    }
     checkAuth();
   }, []);
 
