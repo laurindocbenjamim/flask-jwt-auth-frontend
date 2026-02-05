@@ -4,21 +4,14 @@ import { config } from '../config';
 const API_BASE_URL = config.API_BASE_URL;
 
 const getHeaders = () => {
-  const token = localStorage.getItem('access_token');
-  const headers: HeadersInit = {
+  return {
     'Content-Type': 'application/json',
   };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
 };
 
 const handleResponse = async <T,>(response: Response): Promise<T> => {
   if (!response.ok) {
     if (response.status === 401) {
-      localStorage.removeItem('access_token');
-      window.location.hash = '#/login';
       throw new Error('Unauthorized');
     }
     const errorData = await response.json().catch(() => ({ message: 'An error occurred' }));
@@ -31,8 +24,9 @@ export const authService = {
   login: async (credentials: { username: string; password: string }): Promise<AuthResponse> => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify(credentials),
+      credentials: 'include',
     });
     return handleResponse<AuthResponse>(response);
   },
@@ -41,13 +35,12 @@ export const authService = {
     const response = await fetch(`${API_BASE_URL}/auth/logout`, {
       method: 'POST',
       headers: getHeaders(),
+      credentials: 'include',
     });
     return handleResponse<GenericResponse>(response);
   },
 
   googleLogin: async (): Promise<void> => {
-    // Redirect to backend's Google OAuth endpoint
-    // Backend will handle the OAuth flow and redirect back after authentication
     window.location.href = `${API_BASE_URL}/auth2/google/login`;
   },
 
@@ -55,18 +48,16 @@ export const authService = {
     const response = await fetch(`${API_BASE_URL}/auth2/google/logout`, {
       method: 'GET',
       headers: getHeaders(),
+      credentials: 'include',
     });
     return handleResponse<GenericResponse>(response);
   },
 
   githubLogin: async (): Promise<void> => {
-    // Redirect to backend's GitHub OAuth endpoint
-    // Backend will handle the OAuth flow and redirect back after authentication
     window.location.href = `${API_BASE_URL}/auth2/github/login`;
   },
 
   githubSignIn: async (): Promise<void> => {
-    // Alternative signin endpoint
     window.location.href = `${API_BASE_URL}/auth2/github/signin`;
   },
 
@@ -74,6 +65,7 @@ export const authService = {
     const response = await fetch(`${API_BASE_URL}/auth2/github/logout`, {
       method: 'POST',
       headers: getHeaders(),
+      credentials: 'include',
     });
     return handleResponse<GenericResponse>(response);
   },
@@ -83,32 +75,40 @@ export const userService = {
   register: async (userData: User): Promise<GenericResponse> => {
     const response = await fetch(`${API_BASE_URL}/user/dao`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders(),
       body: JSON.stringify(userData),
+      credentials: 'include',
     });
     return handleResponse<GenericResponse>(response);
   },
 
-  getCurrentUser: async (): Promise<User> => {
-    // Using admin/user endpoint which returns current logged in user details
+  getCurrentUser: async (): Promise<{ success: boolean; user: User }> => {
     const response = await fetch(`${API_BASE_URL}/admin/user`, {
       method: 'GET',
       headers: getHeaders(),
+      credentials: 'include',
     });
-    const data = await handleResponse<any>(response);
-    // Transform the response to match our User interface if necessary
-    return {
-      email: data.email || 'user@example.com',
-      username: data.username || 'User',
-      is_administrator: data.is_administrator,
-      ...data
-    };
+
+    const data = await handleResponse<{ success: boolean; user: any }>(response);
+
+    if (data.user) {
+      data.user = {
+        ...data.user,
+        id: data.user.id,
+        email: data.user.email || '',
+        username: data.user.username || '',
+        is_administrator: data.user.is_administrator || false,
+      };
+    }
+
+    return data;
   },
 
   getUserById: async (id: number): Promise<UserResponse> => {
     const response = await fetch(`${API_BASE_URL}/user/dao/${id}`, {
       method: 'GET',
       headers: getHeaders(),
+      credentials: 'include',
     });
     return handleResponse<UserResponse>(response);
   },
@@ -118,6 +118,7 @@ export const userService = {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(data),
+      credentials: 'include',
     });
     return handleResponse<UserResponse>(response);
   },
@@ -126,6 +127,7 @@ export const userService = {
     const response = await fetch(`${API_BASE_URL}/user/dao/${id}`, {
       method: 'DELETE',
       headers: getHeaders(),
+      credentials: 'include',
     });
     return handleResponse<GenericResponse>(response);
   },
@@ -133,10 +135,10 @@ export const userService = {
 
 export const adminService = {
   getAllUsers: async (): Promise<UserListResponse> => {
-    // Using user/manager endpoint for admin listing
     const response = await fetch(`${API_BASE_URL}/user/manager`, {
       method: 'GET',
       headers: getHeaders(),
+      credentials: 'include',
     });
     return handleResponse<UserListResponse>(response);
   }

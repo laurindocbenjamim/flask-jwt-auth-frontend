@@ -8,6 +8,7 @@ import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { About, Projects, Experiences } from './pages/Portfolio';
+import { Elinara } from './pages/Elinara';
 import { AuthStatus } from './types';
 
 // Protected Route Component
@@ -42,6 +43,7 @@ const AppRoutes = () => {
         <Route path="about" element={<About />} />
         <Route path="projects" element={<Projects />} />
         <Route path="experiences" element={<Experiences />} />
+        <Route path="elinara" element={<Elinara />} />
 
         {/* Protected Routes */}
         <Route
@@ -63,14 +65,10 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Specific path for backend OAuth callback redirect */}
+        {/* Specific path for backend OAuth callback redirect - made public to avoid redirect loop before token is set */}
         <Route
           path="admin/user"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
+          element={<Dashboard />}
         />
       </Route>
 

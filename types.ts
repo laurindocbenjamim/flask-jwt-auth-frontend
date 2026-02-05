@@ -13,14 +13,16 @@ export interface User {
 }
 
 export interface AuthResponse {
-  status_code: number;
-  message: string;
+  success?: boolean;
+  status_code?: number;
+  message?: string;
   access_token?: string;
   username?: string;
   user?: User;
 }
 
 export interface UserResponse {
+  success?: boolean;
   status_code: number;
   user: User;
 }

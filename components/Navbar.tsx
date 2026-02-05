@@ -11,7 +11,6 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
   };
 
   return (
@@ -35,13 +34,16 @@ export const Navbar: React.FC = () => {
               <Link to="/about" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 About
               </Link>
+              <Link to="/elinara" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                Elinara
+              </Link>
             </div>
           </div>
-          
+
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            {status === AuthStatus.AUTHENTICATED && user ? (
+            {status === AuthStatus.AUTHENTICATED && user && (
               <div className="flex items-center space-x-4">
-                 {user.is_administrator && (
+                {user.is_administrator && (
                   <Link to="/admin" className="text-gray-500 hover:text-primary-600 flex items-center gap-1 text-sm font-medium">
                     <Shield className="h-4 w-4" /> Admin
                   </Link>
@@ -51,10 +53,10 @@ export const Navbar: React.FC = () => {
                 </Link>
                 <div className="h-8 w-px bg-gray-200 mx-2"></div>
                 <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold">
-                        {user.username?.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-sm font-medium text-gray-700">{user.username}</span>
+                  <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold">
+                    {user.username?.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">{user.username}</span>
                 </div>
                 <button
                   onClick={handleLogout}
@@ -63,7 +65,8 @@ export const Navbar: React.FC = () => {
                   <LogOut className="h-4 w-4" />
                 </button>
               </div>
-            ) : (
+            )}
+            {status === AuthStatus.UNAUTHENTICATED && (
               <div className="flex items-center space-x-4">
                 <Link to="/login" className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                   Log in
@@ -94,14 +97,15 @@ export const Navbar: React.FC = () => {
             <Link to="/projects" className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">Projects</Link>
             <Link to="/experiences" className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">Experience</Link>
             <Link to="/about" className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">About</Link>
+            <Link to="/elinara" className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">Elinara</Link>
           </div>
           <div className="pt-4 pb-4 border-t border-gray-200">
-            {status === AuthStatus.AUTHENTICATED && user ? (
+            {status === AuthStatus.AUTHENTICATED && user && (
               <div className="space-y-1">
                 <div className="flex items-center px-4 mb-3">
                   <div className="flex-shrink-0">
                     <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold">
-                        {user.username?.charAt(0).toUpperCase()}
+                      {user.username?.charAt(0).toUpperCase()}
                     </div>
                   </div>
                   <div className="ml-3">
@@ -111,11 +115,12 @@ export const Navbar: React.FC = () => {
                 </div>
                 <Link to="/dashboard" className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">Dashboard</Link>
                 {user.is_administrator && (
-                   <Link to="/admin" className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">Admin</Link>
+                  <Link to="/admin" className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">Admin</Link>
                 )}
                 <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-base font-medium text-red-600 hover:text-red-800 hover:bg-gray-100">Sign out</button>
               </div>
-            ) : (
+            )}
+            {status === AuthStatus.UNAUTHENTICATED && (
               <div className="space-y-1 px-2">
                 <Link to="/login" className="block text-center w-full px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md">Log in</Link>
                 <Link to="/register" className="block text-center w-full px-4 py-2 text-base font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md">Sign up</Link>

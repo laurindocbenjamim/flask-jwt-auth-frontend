@@ -30,11 +30,11 @@ export const Login: React.FC = () => {
     setError('');
     try {
       const response = await authService.login(formData);
-      if (response.access_token) {
-        await login(response.access_token);
+      if (response.success || response.access_token) {
+        await login(response.access_token || '');
         navigate('/dashboard');
       } else {
-        setError('Login failed: No access token received.');
+        setError('Login failed. Please check your credentials.');
       }
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.');
@@ -67,14 +67,14 @@ export const Login: React.FC = () => {
               Sign in to access your dashboard
             </p>
           </div>
-          
+
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             {error && (
               <div className="text-red-300 text-sm bg-red-500/20 border border-red-500/30 p-3 rounded-lg animate-pulse">
                 {error}
               </div>
             )}
-            
+
             {/* Email/Username Input */}
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">

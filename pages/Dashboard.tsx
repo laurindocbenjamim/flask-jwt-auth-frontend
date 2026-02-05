@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { userService } from '../services/api';
-import { User } from '../types';
+import { User, AuthStatus } from '../types';
 import { Save, Trash2, Mail, Phone, MapPin, User as UserIcon } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
-  const { user, logout, checkAuth } = useAuth();
+  const { user, status, logout, checkAuth } = useAuth();
   const [formData, setFormData] = useState<Partial<User>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -48,12 +48,50 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  if (!user) return <div>Loading...</div>;
+  if (status === AuthStatus.LOADING || status === AuthStatus.IDLE) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="animate-spin h-10 w-10 border-4 border-primary-500 border-t-transparent rounded-full mb-4"></div>
+        <p className="text-gray-500 font-medium">Loading profile...</p>
+      </div>
+    );
+  }
+
+  if (!user || status === AuthStatus.UNAUTHENTICATED) {
+    return (
+      <div className="max-w-7xl mx-auto py-20 px-4 sm:px-6 lg:px-8 text-center">
+        <div className="bg-white rounded-2xl shadow-xl p-12 border border-gray-100 max-w-2xl mx-auto">
+          <div className="h-16 w-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <UserIcon className="h-8 w-8 text-primary-600" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Public Profile View</h2>
+          <p className="text-gray-600 mb-8 text-lg">
+            This page is usually reserved for logged-in users.
+            If you are trying to access your profile, please sign in below.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="#/login"
+              className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-primary-600 hover:bg-primary-700 transition-all shadow-lg hover:shadow-primary-500/30"
+            >
+              Log In
+            </a>
+            <a
+              href="#/elinara"
+              className="inline-flex items-center justify-center px-8 py-3 border border-gray-300 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-all shadow-sm"
+            >
+              Visit Elinara
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
       <div className="md:grid md:grid-cols-3 md:gap-6">
-        
+
         {/* Profile Summary */}
         <div className="md:col-span-1">
           <div className="px-4 sm:px-0">
@@ -61,25 +99,25 @@ export const Dashboard: React.FC = () => {
             <p className="mt-1 text-sm text-gray-600">
               Update your personal details and account settings.
             </p>
-            
+
             <div className="mt-6 bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6 flex flex-col items-center text-center">
-                    <div className="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 text-3xl font-bold mb-4">
-                        {user.username?.charAt(0).toUpperCase()}
-                    </div>
-                    <h4 className="text-xl font-bold text-gray-900">{user.firstname} {user.lastname}</h4>
-                    <p className="text-sm text-gray-500 mb-4">{user.email}</p>
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' || user.is_administrator ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
-                        {user.is_administrator ? 'Administrator' : 'Standard User'}
-                    </span>
+              <div className="px-4 py-5 sm:p-6 flex flex-col items-center text-center">
+                <div className="h-24 w-24 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 text-3xl font-bold mb-4">
+                  {user.username?.charAt(0).toUpperCase()}
                 </div>
+                <h4 className="text-xl font-bold text-gray-900">{user.firstname} {user.lastname}</h4>
+                <p className="text-sm text-gray-500 mb-4">{user.email}</p>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' || user.is_administrator ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
+                  {user.is_administrator ? 'Administrator' : 'Standard User'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Edit Form */}
         <div className="mt-5 md:mt-0 md:col-span-2">
-            
+
           {message && (
             <div className={`mb-4 p-4 rounded-md ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
               {message.text}
@@ -88,7 +126,7 @@ export const Dashboard: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="shadow sm:rounded-md sm:overflow-hidden bg-white">
             <div className="px-4 py-5 bg-white sm:p-6 space-y-6">
-              
+
               <div className="grid grid-cols-6 gap-6">
                 <div className="col-span-6 sm:col-span-3">
                   <label htmlFor="firstname" className="block text-sm font-medium text-gray-700">First name</label>
@@ -155,19 +193,19 @@ export const Dashboard: React.FC = () => {
 
                 <div className="col-span-6 sm:col-span-3">
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone</label>
-                   <div className="mt-1 relative rounded-md shadow-sm">
+                  <div className="mt-1 relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Phone className="h-4 w-4 text-gray-400" />
                     </div>
                     <input
-                        type="text"
-                        name="phone"
-                        id="phone"
-                        value={formData.phone || ''}
-                        onChange={handleChange}
-                        className="focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border"
+                      type="text"
+                      name="phone"
+                      id="phone"
+                      value={formData.phone || ''}
+                      onChange={handleChange}
+                      className="focus:ring-primary-500 focus:border-primary-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 border"
                     />
-                   </div>
+                  </div>
                 </div>
 
                 <div className="col-span-6">
@@ -184,24 +222,24 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
             <div className="px-4 py-3 bg-gray-50 text-right sm:px-6 flex justify-between items-center">
-                <button
-                    type="button"
-                    onClick={handleDelete}
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Account
-                </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Account
+              </button>
               <button
                 type="submit"
                 disabled={loading}
                 className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
               >
                 {loading ? 'Saving...' : (
-                    <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save
-                    </>
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </>
                 )}
               </button>
             </div>
