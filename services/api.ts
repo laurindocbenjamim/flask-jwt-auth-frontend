@@ -226,3 +226,24 @@ export const oneDriveService = {
     return handleResponse<DriveFile>(response);
   },
 };
+
+export const cloudFilesService = {
+  saveFiles: async (files: Array<{ id: string; name: string; provider: string }>): Promise<GenericResponse> => {
+    const response = await fetch(`${API_BASE_URL}/cloud-files`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ files }),
+      credentials: 'include',
+    });
+    return handleResponse<GenericResponse>(response);
+  },
+
+  listFiles: async (): Promise<{ success: boolean; files: Array<{ id: string; name: string; provider: string }> }> => {
+    const response = await fetch(`${API_BASE_URL}/cloud-files`, {
+      method: 'GET',
+      headers: getHeaders(),
+      credentials: 'include',
+    });
+    return handleResponse<{ success: boolean; files: Array<{ id: string; name: string; provider: string }> }>(response);
+  }
+};
