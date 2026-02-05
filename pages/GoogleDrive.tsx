@@ -1,27 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-    Folder,
-    File,
-    FileText,
-    Image as ImageIcon,
-    Music,
-    Video,
-    Search,
-    Grid,
-    List,
-    MoreVertical,
-    Download,
-    Info,
-    Clock,
-    Star,
-    Users,
-    Trash2,
-    Cloud,
-    ChevronRight,
-    Plus,
-    Settings,
-    HelpCircle,
-    Layout
+    Cloud, ChevronRight, Plus, Settings, HelpCircle, Layout,
+    Search, Folder, File, FileText, Image as ImageIcon,
+    Music, Video, Grid, List,
+    Loader2, AlertCircle, HardDrive, Download, Info, MoreVertical, LayoutGrid, Trash2, Globe, X, Share2, Copy,
+    Users, Clock, Star
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { driveService, authService } from '../services/api';
@@ -36,6 +19,19 @@ export const GoogleDrive: React.FC = () => {
     const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
     const [breadcrumbs, setBreadcrumbs] = useState<{ id: string | null, name: string }[]>([{ id: null, name: 'My Drive' }]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+    const [propertiesFile, setPropertiesFile] = useState<DriveFile | null>(null);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (activeMenuId && !(event.target as Element).closest('.drive-menu-trigger')) {
+                setActiveMenuId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [activeMenuId]);
 
     const fetchFiles = async (folderId: string | null) => {
         if (!user?.has_drive_access) return;
@@ -71,14 +67,8 @@ export const GoogleDrive: React.FC = () => {
         }
     };
 
-    const navigateToBreadcrumb = (index: number) => {
-        const target = breadcrumbs[index];
-        setCurrentFolderId(target.id);
-        setBreadcrumbs(breadcrumbs.slice(0, index + 1));
-    };
-
     const getFileIcon = (file: DriveFile) => {
-        if (file.is_folder) return <Folder className="h-6 w-6 text-blue-400 fill-blue-100" />;
+        if (file.is_folder) return <Folder className="h-6 w-6 text-yellow-400 fill-yellow-100" />;
 
         const mime = file.mimeType.toLowerCase();
         if (mime.includes('image')) return <ImageIcon className="h-6 w-6 text-red-500" />;
@@ -259,8 +249,8 @@ export const GoogleDrive: React.FC = () => {
                         </div>
                     ) : filteredFiles.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-32">
-                            <div className="bg-blue-50 h-32 w-32 rounded-full flex items-center justify-center mb-6">
-                                <Folder className="h-16 w-16 text-blue-200" />
+                            <div className="bg-yellow-50 h-32 w-32 rounded-full flex items-center justify-center mb-6">
+                                <Folder className="h-16 w-16 text-yellow-200" />
                             </div>
                             <h3 className="text-xl font-semibold text-gray-900">No items found</h3>
                             <p className="text-gray-500 mt-2">This folder is empty or matches no search results.</p>
@@ -273,8 +263,43 @@ export const GoogleDrive: React.FC = () => {
                                     onClick={() => handleFileClick(file)}
                                     className="group relative bg-white border border-gray-100 p-4 rounded-2xl hover:shadow-xl hover:border-blue-100 transition-all cursor-pointer"
                                 >
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-1 hover:bg-gray-100 rounded-lg text-gray-500"><MoreVertical className="h-4 w-4" /></button>
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveMenuId(activeMenuId === file.id ? null : file.id);
+                                            }}
+                                            className="drive-menu-trigger p-1 hover:bg-gray-100 rounded-lg text-gray-500 bg-white shadow-sm"
+                                        >
+                                            <MoreVertical className="h-4 w-4" />
+                                        </button>
+
+                                        {activeMenuId === file.id && (
+                                            <div className="absolute right-0 top-8 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setPropertiesFile(file); setActiveMenuId(null); }}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                >
+                                                    <Info className="h-4 w-4" /> Properties
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                >
+                                                    <Share2 className="h-4 w-4" /> Send to Cross
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (file.webViewLink) window.open(file.webViewLink, '_blank');
+                                                        setActiveMenuId(null);
+                                                    }}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                >
+                                                    <Download className="h-4 w-4" /> Download
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex flex-col items-center text-center">
                                         <div className="h-20 flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-300">
@@ -332,6 +357,69 @@ export const GoogleDrive: React.FC = () => {
                     )}
                 </div>
             </main>
+
+            {/* Properties Modal */}
+            {propertiesFile && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-900">File Properties</h3>
+                            <button
+                                onClick={() => setPropertiesFile(null)}
+                                className="p-1 rounded-full hover:bg-gray-100 text-gray-500"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="flex flex-col items-center justify-center py-4">
+                                <div className="h-20 w-20 flex items-center justify-center bg-gray-50 rounded-2xl mb-3">
+                                    {getFileIcon(propertiesFile)}
+                                </div>
+                                <p className="font-medium text-gray-900 text-center px-4">{propertiesFile.name}</p>
+                            </div>
+
+                            <div className="space-y-3 text-sm">
+                                <div className="flex justify-between py-2 border-b border-gray-50">
+                                    <span className="text-gray-500">Type</span>
+                                    <span className="text-gray-900 font-medium truncate max-w-[200px]">{propertiesFile.is_folder ? 'Folder' : propertiesFile.mimeType}</span>
+                                </div>
+                                <div className="flex justify-between py-2 border-b border-gray-50">
+                                    <span className="text-gray-500">Size</span>
+                                    <span className="text-gray-900 font-medium">{propertiesFile.is_folder ? '-' : formatSize(propertiesFile.size)}</span>
+                                </div>
+                                <div className="flex justify-between py-2 border-b border-gray-50">
+                                    <span className="text-gray-500">Modified</span>
+                                    <span className="text-gray-900 font-medium">
+                                        {propertiesFile.modifiedTime ? new Date(propertiesFile.modifiedTime).toLocaleString() : '-'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between py-2">
+                                    <span className="text-gray-500">ID</span>
+                                    <span className="text-gray-900 font-mono text-xs bg-gray-100 px-2 py-1 rounded truncate max-w-[200px]">{propertiesFile.id}</span>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        if (propertiesFile.webViewLink) window.open(propertiesFile.webViewLink, '_blank');
+                                    }}
+                                    className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 font-medium hover:bg-blue-700 transition-colors"
+                                >
+                                    Open
+                                </button>
+                                <button
+                                    onClick={() => setPropertiesFile(null)}
+                                    className="flex-1 bg-gray-100 text-gray-700 rounded-xl py-2.5 font-medium hover:bg-gray-200 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
