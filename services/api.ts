@@ -1,4 +1,4 @@
-import { AuthResponse, GenericResponse, User, UserListResponse, UserResponse } from '../types';
+import { AuthResponse, GenericResponse, User, UserListResponse, UserResponse, DriveFile, DriveListResponse } from '../types';
 import { config } from '../config';
 
 const API_BASE_URL = config.API_BASE_URL;
@@ -98,6 +98,7 @@ export const userService = {
         email: data.user.email || '',
         username: data.user.username || '',
         is_administrator: data.user.is_administrator || false,
+        has_drive_access: data.user.has_drive_access || false,
       };
     }
 
@@ -142,4 +143,42 @@ export const adminService = {
     });
     return handleResponse<UserListResponse>(response);
   }
+};
+
+export const driveService = {
+  listFiles: async (folderId?: string): Promise<DriveListResponse> => {
+    const url = folderId
+      ? `${API_BASE_URL}/drive/files?folder_id=${folderId}`
+      : `${API_BASE_URL}/drive/files`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getHeaders(),
+      credentials: 'include',
+    });
+
+    // The backend returns a nested 'data' object
+    const rawData = await handleResponse<any>(response);
+    const driveData = rawData.data || {};
+
+    const files = (driveData.files || []).map((file: any) => ({
+      ...file,
+      isFolder: file.is_folder || file.mimeType === 'application/vnd.google-apps.folder',
+      modifiedTime: file.modifiedTime || file.createdTime
+    }));
+
+    return {
+      success: rawData.success,
+      files,
+      current_folder: driveData.folder_id
+    };
+  },
+
+  getFileDetail: async (fileId: string): Promise<DriveFile> => {
+    const response = await fetch(`${API_BASE_URL}/drive/file/${fileId}`, {
+      method: 'GET',
+      headers: getHeaders(),
+      credentials: 'include',
+    });
+    return handleResponse<DriveFile>(response);
+  },
 };

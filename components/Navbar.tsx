@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, X, LogOut, LayoutDashboard, Shield } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, Shield, HardDrive } from 'lucide-react';
 import { AuthStatus } from '../types';
 
 export const Navbar: React.FC = () => {
@@ -50,6 +50,9 @@ export const Navbar: React.FC = () => {
                 )}
                 <Link to="/dashboard" className="text-gray-500 hover:text-primary-600 flex items-center gap-1 text-sm font-medium">
                   <LayoutDashboard className="h-4 w-4" /> Dashboard
+                </Link>
+                <Link to="/drive" className="text-gray-500 hover:text-primary-600 flex items-center gap-1 text-sm font-medium">
+                  <HardDrive className="h-4 w-4" /> My Drive
                 </Link>
                 <div className="h-8 w-px bg-gray-200 mx-2"></div>
                 <div className="flex items-center gap-2">
@@ -114,6 +117,7 @@ export const Navbar: React.FC = () => {
                   </div>
                 </div>
                 <Link to="/dashboard" className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">Dashboard</Link>
+                <Link to="/drive" className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">My Drive</Link>
                 {user.is_administrator && (
                   <Link to="/admin" className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">Admin</Link>
                 )}

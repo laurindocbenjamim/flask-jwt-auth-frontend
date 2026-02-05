@@ -9,7 +9,26 @@ export interface User {
   address?: string;
   postal_code?: string;
   role?: 'admin' | 'user';
-  is_administrator?: boolean; // From /admin/user endpoint
+  is_administrator?: boolean;
+  has_drive_access?: boolean; // New!
+}
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  size?: string;
+  modifiedTime?: string;
+  iconLink?: string;
+  isFolder: boolean;
+  is_folder: boolean; // Added per backend structure
+  webViewLink?: string;
+}
+
+export interface DriveListResponse {
+  success: boolean;
+  files: DriveFile[];
+  current_folder?: string;
 }
 
 export interface AuthResponse {

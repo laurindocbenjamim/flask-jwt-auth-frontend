@@ -9,6 +9,7 @@ import { Dashboard } from './pages/Dashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { About, Projects, Experiences } from './pages/Portfolio';
 import { Elinara } from './pages/Elinara';
+import { GoogleDrive } from './pages/GoogleDrive';
 import { AuthStatus } from './types';
 
 // Protected Route Component
@@ -51,6 +52,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="drive"
+          element={
+            <ProtectedRoute>
+              <GoogleDrive />
             </ProtectedRoute>
           }
         />
