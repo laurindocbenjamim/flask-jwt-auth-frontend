@@ -63,6 +63,22 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="drive/file/:id"
+          element={
+            <ProtectedRoute>
+              <FileProperties />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="drive/cross-reference"
+          element={
+            <ProtectedRoute>
+              <CrossReference />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Admin Routes */}
         <Route

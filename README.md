@@ -21,6 +21,9 @@ This frontend is designed to work with a Flask backend using JWT authentication.
 ### 3. Routing & Redirection Fixes
 - **Dashboard Graceful State**: The dashboard now handles unauthenticated states with a clear UI instead of getting stuck in a redirect loop.
 - **Protected Routes**: Navigation is managed via a robust `AuthStatus` enum, ensuring users only see pages they are authorized for.
+- **File Management**: Dedicated routes for file interactions:
+  - `/drive/file/:id`: Properties and details view.
+  - `/drive/cross-reference`: AI analysis and cross-referencing tool.
 
 ### 4. Logic & Privacy Cleanup
 - **Debug Cleanup**: All sensitive console logs exposing user data or internal session states have been removed for production readiness.
