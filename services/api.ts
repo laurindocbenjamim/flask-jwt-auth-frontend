@@ -69,6 +69,10 @@ export const authService = {
     });
     return handleResponse<GenericResponse>(response);
   },
+
+  microsoftLogin: async (): Promise<void> => {
+    window.location.href = `${API_BASE_URL}/auth2/microsoft/login`;
+  },
 };
 
 export const userService = {
@@ -99,6 +103,7 @@ export const userService = {
         username: data.user.username || '',
         is_administrator: data.user.is_administrator || false,
         has_drive_access: data.user.has_drive_access || false,
+        has_microsoft_drive_access: data.user.has_microsoft_drive_access || false,
       };
     }
 
@@ -175,6 +180,45 @@ export const driveService = {
 
   getFileDetail: async (fileId: string): Promise<DriveFile> => {
     const response = await fetch(`${API_BASE_URL}/drive/file/${fileId}`, {
+      method: 'GET',
+      headers: getHeaders(),
+      credentials: 'include',
+    });
+    return handleResponse<DriveFile>(response);
+  },
+};
+
+export const oneDriveService = {
+  listFiles: async (folderId?: string): Promise<DriveListResponse> => {
+    const url = folderId
+      ? `${API_BASE_URL}/drive/microsoft/files?folder_id=${folderId}`
+      : `${API_BASE_URL}/drive/microsoft/files`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getHeaders(),
+      credentials: 'include',
+    });
+
+    const rawData = await handleResponse<any>(response);
+    const driveData = rawData.data || {};
+
+    const files = (driveData.files || []).map((file: any) => ({
+      ...file,
+      // Ensure backend fields map to frontend expectations
+      isFolder: file.is_folder || file.folder !== undefined, // Adjust based on actual MS graph response usually 'folder' property exists
+      modifiedTime: file.lastModifiedDateTime,
+      name: file.name
+    }));
+
+    return {
+      success: rawData.success,
+      files,
+      current_folder: driveData.folder_id
+    };
+  },
+
+  getFileDetail: async (fileId: string): Promise<DriveFile> => {
+    const response = await fetch(`${API_BASE_URL}/drive/microsoft/file/${fileId}`, {
       method: 'GET',
       headers: getHeaders(),
       credentials: 'include',

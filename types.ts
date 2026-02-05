@@ -10,7 +10,8 @@ export interface User {
   postal_code?: string;
   role?: 'admin' | 'user';
   is_administrator?: boolean;
-  has_drive_access?: boolean; // New!
+  has_drive_access?: boolean; // Google Drive
+  has_microsoft_drive_access?: boolean; // OneDrive
 }
 
 export interface DriveFile {

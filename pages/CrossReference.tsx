@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles, File as FileIcon, X, BrainCircuit, Mic } from 'lucide-react';
 import { DriveFile } from '../types';
@@ -10,7 +10,24 @@ export const CrossReference: React.FC = () => {
     // Initial file passed from navigation
     const initialFile = location.state?.file as DriveFile | undefined;
 
-    const [selectedFiles, setSelectedFiles] = useState<DriveFile[]>(initialFile ? [initialFile] : []);
+    const [selectedFiles, setSelectedFiles] = useState<DriveFile[]>(() => {
+        const saved = localStorage.getItem('crossRefFiles');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    useEffect(() => {
+        if (initialFile) {
+            setSelectedFiles(prev => {
+                if (prev.some(f => f.id === initialFile.id)) return prev;
+                return [...prev, initialFile];
+            });
+        }
+    }, [initialFile?.id]);
+
+    useEffect(() => {
+        localStorage.setItem('crossRefFiles', JSON.stringify(selectedFiles));
+    }, [selectedFiles]);
+
     const [isProcessing, setIsProcessing] = useState(false);
 
     const removeFile = (id: string) => {
@@ -145,8 +162,8 @@ export const CrossReference: React.FC = () => {
                                 <button
                                     disabled={selectedFiles.length === 0 || isProcessing}
                                     className={`w-full py-4 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${selectedFiles.length === 0
-                                            ? 'bg-white/10 text-white/50 cursor-not-allowed'
-                                            : 'bg-white text-indigo-900 hover:bg-indigo-50'
+                                        ? 'bg-white/10 text-white/50 cursor-not-allowed'
+                                        : 'bg-white text-indigo-900 hover:bg-indigo-50'
                                         }`}
                                 >
                                     {isProcessing ? 'Processing...' : 'Run Analysis'}
