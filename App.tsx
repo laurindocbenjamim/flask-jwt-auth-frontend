@@ -7,9 +7,11 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { About, Projects, Experiences } from './pages/Portfolio';
+import { Projects } from './pages/Portfolio';
 import { Elinara } from './pages/Elinara';
 import { GoogleDrive } from './pages/GoogleDrive';
+import { FileProperties } from './pages/FileProperties';
+import { CrossReference } from './pages/CrossReference';
 import { AuthStatus } from './types';
 
 // Protected Route Component
@@ -41,9 +43,7 @@ const AppRoutes = () => {
         <Route path="register" element={<Register />} />
 
         {/* Portfolio Routes */}
-        <Route path="about" element={<About />} />
         <Route path="projects" element={<Projects />} />
-        <Route path="experiences" element={<Experiences />} />
         <Route path="elinara" element={<Elinara />} />
 
         {/* Protected Routes */}

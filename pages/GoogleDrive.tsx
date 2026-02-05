@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Cloud, ChevronRight, Plus, Settings, HelpCircle, Layout,
     Search, Folder, File, FileText, Image as ImageIcon,
@@ -20,7 +21,7 @@ export const GoogleDrive: React.FC = () => {
     const [breadcrumbs, setBreadcrumbs] = useState<{ id: string | null, name: string }[]>([{ id: null, name: 'My Drive' }]);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-    const [propertiesFile, setPropertiesFile] = useState<DriveFile | null>(null);
+    const navigate = useNavigate();
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -201,7 +202,7 @@ export const GoogleDrive: React.FC = () => {
                 </header>
 
                 {/* Content Explorer */}
-                <div className="flex-1 overflow-y-auto px-6 py-4">
+                <div className="flex-1 overflow-y-auto px-6 py-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
                     <div className="flex items-center justify-between mb-6">
                         <nav className="flex items-center text-lg font-medium text-gray-700">
                             {breadcrumbs.map((crumb, idx) => (
@@ -277,13 +278,13 @@ export const GoogleDrive: React.FC = () => {
                                         {activeMenuId === file.id && (
                                             <div className="absolute right-0 top-8 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); setPropertiesFile(file); setActiveMenuId(null); }}
+                                                    onClick={(e) => { e.stopPropagation(); navigate(`/drive/file/${file.id}`, { state: { file } }); setActiveMenuId(null); }}
                                                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                                 >
                                                     <Info className="h-4 w-4" /> Properties
                                                 </button>
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); setActiveMenuId(null); }}
+                                                    onClick={(e) => { e.stopPropagation(); navigate('/drive/cross-reference', { state: { file } }); setActiveMenuId(null); }}
                                                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                                 >
                                                     <Share2 className="h-4 w-4" /> Send to Cross
@@ -345,8 +346,24 @@ export const GoogleDrive: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100">
-                                                    <button className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-gray-500"><Download className="h-4 w-4" /></button>
-                                                    <button className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-gray-500"><Info className="h-4 w-4" /></button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (file.webViewLink) window.open(file.webViewLink, '_blank');
+                                                        }}
+                                                        className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-gray-500"
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(`/drive/file/${file.id}`, { state: { file } });
+                                                        }}
+                                                        className="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-gray-500"
+                                                    >
+                                                        <Info className="h-4 w-4" />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -358,68 +375,6 @@ export const GoogleDrive: React.FC = () => {
                 </div>
             </main>
 
-            {/* Properties Modal */}
-            {propertiesFile && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                            <h3 className="text-lg font-semibold text-gray-900">File Properties</h3>
-                            <button
-                                onClick={() => setPropertiesFile(null)}
-                                className="p-1 rounded-full hover:bg-gray-100 text-gray-500"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div className="flex flex-col items-center justify-center py-4">
-                                <div className="h-20 w-20 flex items-center justify-center bg-gray-50 rounded-2xl mb-3">
-                                    {getFileIcon(propertiesFile)}
-                                </div>
-                                <p className="font-medium text-gray-900 text-center px-4">{propertiesFile.name}</p>
-                            </div>
-
-                            <div className="space-y-3 text-sm">
-                                <div className="flex justify-between py-2 border-b border-gray-50">
-                                    <span className="text-gray-500">Type</span>
-                                    <span className="text-gray-900 font-medium truncate max-w-[200px]">{propertiesFile.is_folder ? 'Folder' : propertiesFile.mimeType}</span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-gray-50">
-                                    <span className="text-gray-500">Size</span>
-                                    <span className="text-gray-900 font-medium">{propertiesFile.is_folder ? '-' : formatSize(propertiesFile.size)}</span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-gray-50">
-                                    <span className="text-gray-500">Modified</span>
-                                    <span className="text-gray-900 font-medium">
-                                        {propertiesFile.modifiedTime ? new Date(propertiesFile.modifiedTime).toLocaleString() : '-'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-gray-500">ID</span>
-                                    <span className="text-gray-900 font-mono text-xs bg-gray-100 px-2 py-1 rounded truncate max-w-[200px]">{propertiesFile.id}</span>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 flex gap-3">
-                                <button
-                                    onClick={() => {
-                                        if (propertiesFile.webViewLink) window.open(propertiesFile.webViewLink, '_blank');
-                                    }}
-                                    className="flex-1 bg-blue-600 text-white rounded-xl py-2.5 font-medium hover:bg-blue-700 transition-colors"
-                                >
-                                    Open
-                                </button>
-                                <button
-                                    onClick={() => setPropertiesFile(null)}
-                                    className="flex-1 bg-gray-100 text-gray-700 rounded-xl py-2.5 font-medium hover:bg-gray-200 transition-colors"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
