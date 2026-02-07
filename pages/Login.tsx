@@ -161,6 +161,20 @@ export const Login: React.FC = () => {
               <Github className="h-5 w-5" />
               <span>GitHub</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => authService.microsoftLogin()}
+              className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 border border-white/20 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-all duration-300 backdrop-blur-sm hover:scale-105 transform"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 23 23" fill="currentColor">
+                <path fill="#f35325" d="M1 1h10v10H1z" />
+                <path fill="#81bc06" d="M12 1h10v10H12z" />
+                <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                <path fill="#ffba08" d="M12 12h10v10H12z" />
+              </svg>
+              <span>Microsoft</span>
+            </button>
           </div>
 
           {/* Sign Up Link */}

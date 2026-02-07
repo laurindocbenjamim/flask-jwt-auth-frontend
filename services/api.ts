@@ -1,43 +1,59 @@
+import axios, { AxiosError } from 'axios';
 import { AuthResponse, GenericResponse, User, UserListResponse, UserResponse, DriveFile, DriveListResponse } from '../types';
 import { config } from '../config';
 
 const API_BASE_URL = config.API_BASE_URL;
 
-const getHeaders = () => {
-  return {
+// Create centralized Axios instance
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true, // Key for handling HttpOnly cookies
+  headers: {
     'Content-Type': 'application/json',
-  };
-};
+  },
+});
 
-const handleResponse = async <T,>(response: Response): Promise<T> => {
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Unauthorized');
-    }
-    const errorData = await response.json().catch(() => ({ message: 'An error occurred' }));
-    throw new Error(errorData.message || `HTTP Error ${response.status}`);
+// Request Interceptor: No token injection needed with cookies
+// Browser automatically handles cookie transmission due to withCredentials: true
+apiClient.interceptors.request.use(
+  (config) => {
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return response.json();
-};
+);
+
+// Response Interceptor: Handle global errors (e.g., 401 Unauthorized)
+apiClient.interceptors.response.use(
+  (response) => {
+    // Axios wraps the response data in a 'data' property. 
+    // If the backend returns the actual payload directly, we return response.data.
+    return response.data;
+  },
+  (error: AxiosError) => {
+    if (error.response) {
+      if (error.response.status === 401) {
+        // Redirect to login if not already there
+        if (!window.location.hash.includes('login') && !window.location.pathname.includes('login')) {
+          window.location.href = '/#/login';
+        }
+      }
+      // Return error message from backend if available
+      const errorData = error.response.data as any;
+      return Promise.reject(new Error(errorData.message || `HTTP Error ${error.response.status}`));
+    }
+    return Promise.reject(new Error('An error occurred. Please check your network connection.'));
+  }
+);
 
 export const authService = {
   login: async (credentials: { username: string; password: string }): Promise<AuthResponse> => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(credentials),
-      credentials: 'include',
-    });
-    return handleResponse<AuthResponse>(response);
+    return apiClient.post('/auth/login', credentials);
   },
 
   logout: async (): Promise<GenericResponse> => {
-    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: 'POST',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
-    return handleResponse<GenericResponse>(response);
+    return apiClient.post('/auth/logout');
   },
 
   googleLogin: async (): Promise<void> => {
@@ -45,12 +61,7 @@ export const authService = {
   },
 
   googleLogout: async (): Promise<GenericResponse> => {
-    const response = await fetch(`${API_BASE_URL}/auth2/google/logout`, {
-      method: 'GET',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
-    return handleResponse<GenericResponse>(response);
+    return apiClient.get('/auth2/google/logout');
   },
 
   githubLogin: async (): Promise<void> => {
@@ -62,12 +73,7 @@ export const authService = {
   },
 
   githubLogout: async (): Promise<GenericResponse> => {
-    const response = await fetch(`${API_BASE_URL}/auth2/github/logout`, {
-      method: 'POST',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
-    return handleResponse<GenericResponse>(response);
+    return apiClient.post('/auth2/github/logout');
   },
 
   microsoftLogin: async (): Promise<void> => {
@@ -77,92 +83,61 @@ export const authService = {
 
 export const userService = {
   register: async (userData: User): Promise<GenericResponse> => {
-    const response = await fetch(`${API_BASE_URL}/user/dao`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(userData),
-      credentials: 'include',
-    });
-    return handleResponse<GenericResponse>(response);
+    return apiClient.post('/user/dao', userData);
   },
 
   getCurrentUser: async (): Promise<{ success: boolean; user: User }> => {
-    const response = await fetch(`${API_BASE_URL}/admin/user`, {
-      method: 'GET',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
+    const data = await apiClient.get<{ success: boolean; user: any }>('/admin/user');
+    // Ensure we typecast or transform the response correctly
+    // The interceptor returns response.data, so 'data' here is the actual payload.
+    // However, TypeScript might infer 'data' as AxiosResponse if not careful.
+    // Since we returned response.data in interceptor, 'data' IS the payload.
+    // We cast it to likely shape.
 
-    const data = await handleResponse<{ success: boolean; user: any }>(response);
+    // Check if data has user property directly (which it should based on previous implementation)
+    // The previous implementation did: handleResponse(response) -> returns json.
+    const payload = data as unknown as { success: boolean; user: any };
 
-    if (data.user) {
-      data.user = {
-        ...data.user,
-        id: data.user.id,
-        email: data.user.email || '',
-        username: data.user.username || '',
-        is_administrator: data.user.is_administrator || false,
-        has_drive_access: data.user.has_drive_access || false,
-        has_microsoft_drive_access: data.user.has_microsoft_drive_access || false,
+    if (payload.user) {
+      payload.user = {
+        ...payload.user,
+        id: payload.user.id,
+        email: payload.user.email || '',
+        username: payload.user.username || '',
+        is_administrator: payload.user.is_administrator || false,
+        has_drive_access: payload.user.has_drive_access || false,
+        has_microsoft_drive_access: payload.user.has_microsoft_drive_access || false,
       };
     }
-
-    return data;
+    return payload;
   },
 
   getUserById: async (id: number): Promise<UserResponse> => {
-    const response = await fetch(`${API_BASE_URL}/user/dao/${id}`, {
-      method: 'GET',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
-    return handleResponse<UserResponse>(response);
+    return apiClient.get(`/user/dao/${id}`);
   },
 
   updateUser: async (id: number, data: Partial<User>): Promise<UserResponse> => {
-    const response = await fetch(`${API_BASE_URL}/user/dao/${id}`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body: JSON.stringify(data),
-      credentials: 'include',
-    });
-    return handleResponse<UserResponse>(response);
+    return apiClient.put(`/user/dao/${id}`, data);
   },
 
   deleteUser: async (id: number): Promise<GenericResponse> => {
-    const response = await fetch(`${API_BASE_URL}/user/dao/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
-    return handleResponse<GenericResponse>(response);
+    return apiClient.delete(`/user/dao/${id}`);
   },
 };
 
 export const adminService = {
   getAllUsers: async (): Promise<UserListResponse> => {
-    const response = await fetch(`${API_BASE_URL}/user/manager`, {
-      method: 'GET',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
-    return handleResponse<UserListResponse>(response);
+    return apiClient.get('/user/manager');
   }
 };
 
 export const driveService = {
   listFiles: async (folderId?: string): Promise<DriveListResponse> => {
     const url = folderId
-      ? `${API_BASE_URL}/drive/files?folder_id=${folderId}`
-      : `${API_BASE_URL}/drive/files`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
+      ? `/drive/files?folder_id=${folderId}`
+      : `/drive/files`;
 
-    // The backend returns a nested 'data' object
-    const rawData = await handleResponse<any>(response);
+    const rawData = await apiClient.get<any>(url) as any;
     const driveData = rawData.data || {};
 
     const files = (driveData.files || []).map((file: any) => ({
@@ -179,33 +154,23 @@ export const driveService = {
   },
 
   getFileDetail: async (fileId: string): Promise<DriveFile> => {
-    const response = await fetch(`${API_BASE_URL}/drive/file/${fileId}`, {
-      method: 'GET',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
-    return handleResponse<DriveFile>(response);
+    return apiClient.get(`/drive/file/${fileId}`);
   },
 };
 
 export const oneDriveService = {
   listFiles: async (folderId?: string): Promise<DriveListResponse> => {
     const url = folderId
-      ? `${API_BASE_URL}/drive/microsoft/files?folder_id=${folderId}`
-      : `${API_BASE_URL}/drive/microsoft/files`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
+      ? `/drive/microsoft/files?folder_id=${folderId}`
+      : `/drive/microsoft/files`;
 
-    const rawData = await handleResponse<any>(response);
+    const rawData = await apiClient.get<any>(url) as any;
     const driveData = rawData.data || {};
 
     const files = (driveData.files || []).map((file: any) => ({
       ...file,
       // Ensure backend fields map to frontend expectations
-      isFolder: file.is_folder || file.folder !== undefined, // Adjust based on actual MS graph response usually 'folder' property exists
+      isFolder: file.is_folder || file.folder !== undefined,
       modifiedTime: file.lastModifiedDateTime,
       name: file.name
     }));
@@ -218,32 +183,16 @@ export const oneDriveService = {
   },
 
   getFileDetail: async (fileId: string): Promise<DriveFile> => {
-    const response = await fetch(`${API_BASE_URL}/drive/microsoft/file/${fileId}`, {
-      method: 'GET',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
-    return handleResponse<DriveFile>(response);
+    return apiClient.get(`/drive/microsoft/file/${fileId}`);
   },
 };
 
 export const cloudFilesService = {
   saveFiles: async (files: Array<{ id: string; name: string; provider: string }>): Promise<GenericResponse> => {
-    const response = await fetch(`${API_BASE_URL}/cloud-files`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ files }),
-      credentials: 'include',
-    });
-    return handleResponse<GenericResponse>(response);
+    return apiClient.post('/cloud-files', { files });
   },
 
   listFiles: async (): Promise<{ success: boolean; files: Array<{ id: string; name: string; provider: string }> }> => {
-    const response = await fetch(`${API_BASE_URL}/cloud-files`, {
-      method: 'GET',
-      headers: getHeaders(),
-      credentials: 'include',
-    });
-    return handleResponse<{ success: boolean; files: Array<{ id: string; name: string; provider: string }> }>(response);
+    return apiClient.get('/cloud-files');
   }
 };

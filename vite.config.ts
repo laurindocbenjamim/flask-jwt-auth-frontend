@@ -6,6 +6,18 @@ export default defineConfig({
   server: {
     host: true,
     port: 3000,
-    open: true,
+    open: false,
+    proxy: {
+      '/api': {
+        target: process.env.API_TARGET || 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/auth2': {
+        target: process.env.API_TARGET || 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   }
 });

@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   const login = async (token: string) => {
+    // Token is stored in HttpOnly cookie by the backend
     await checkAuth();
   };
 
