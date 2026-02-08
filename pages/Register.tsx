@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/api'; // Use authService for public registration
 import { RegisterRequest } from '../types';
 import { countries } from '../data/countries';
-import { User as UserIcon, Mail, Lock, Phone, MapPin, Globe, CheckCircle, ChevronDown } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, Phone, MapPin, Globe, CheckCircle, ChevronDown, Eye, EyeOff } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +21,7 @@ export const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -149,13 +150,20 @@ export const Register: React.FC = () => {
               <input
                 id="authPassword"
                 name="authPassword"
-                type="password" // Assuming password type is desired even if name is authPassword
+                type={showPassword ? 'text' : 'password'}
                 required
                 placeholder="Password"
                 value={formData.authPassword}
                 onChange={handleChange}
-                className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
+                className="w-full pl-12 pr-12 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 backdrop-blur-sm"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-green-400 transition-colors focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
 
             {/* Location Fields: Country & Code */}
