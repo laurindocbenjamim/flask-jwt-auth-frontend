@@ -303,3 +303,12 @@ To ensure a seamless user experience, we implemented advanced error handling in 
 - **Debugging**: Logs the raw backend error to the console (`console.log('Error from backend:', errorData)`) to assist developers.
 
 This ensures that users always see clear, actionable error messages (e.g., "Invalid country" instead of `[object Object]`), while maintaining a robust fallback for unexpected error formats.
+
+### 6. User Profile Management: Delete Account
+We have added a secure "Delete Account" feature in the user dashboard.
+
+**Key Features:**
+- **Irreversibility Warning**: Users are presented with a clear warning: *"Os seus dados serão mantidos por 30 dias para recuperação... EXCEPT faturas e dados fiscais"*.
+- **Data Export**: Before deletion, users can download their profile data as a JSON file.
+- **Secure Handling**: The request is sent to the secure `/dao/<user_id>` endpoint using the user's JWT (via HttpOnly cookies).
+- **Automatic Logout**: Upon successful deletion, the user is automatically logged out and redirected to the login page.

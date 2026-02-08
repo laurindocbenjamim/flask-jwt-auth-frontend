@@ -4,11 +4,14 @@ import { userService } from '../services/api';
 import { User, AuthStatus } from '../types';
 import { Save, Trash2, Mail, Phone, MapPin, User as UserIcon } from 'lucide-react';
 
+import { DeleteAccountModal } from '../components/DeleteAccountModal';
+
 export const Dashboard: React.FC = () => {
   const { user, status, logout, checkAuth } = useAuth();
   const [formData, setFormData] = useState<Partial<User>>({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -36,15 +39,19 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
     if (!user?.id) return;
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      try {
-        await userService.deleteUser(user.id);
-        logout();
-      } catch (error: any) {
-        setMessage({ type: 'error', text: error.message });
-      }
+    try {
+      await userService.deleteUser(user.id);
+      setIsDeleteModalOpen(false);
+      logout();
+    } catch (error: any) {
+      setIsDeleteModalOpen(false);
+      setMessage({ type: 'error', text: error.message || 'Failed to delete account' });
     }
   };
 
@@ -246,6 +253,16 @@ export const Dashboard: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {/* Delete Account Modal */}
+      {user && (
+        <DeleteAccountModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={confirmDelete}
+          userData={user}
+        />
+      )}
     </div>
   );
 };
