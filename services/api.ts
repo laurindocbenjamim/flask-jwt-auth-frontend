@@ -43,7 +43,24 @@ apiClient.interceptors.response.use(
       }
       // Return error message from backend if available
       const errorData = error.response.data as any;
-      const customError: any = new Error(errorData.message || `HTTP Error ${error.response.status}`);
+      console.log('Error from backend:', errorData); // Log for debugging
+
+      let errorMessage = errorData?.message || errorData?.error || `HTTP Error ${error.response.status}`;
+
+      // Ensure the error message is a string, not an object
+      if (typeof errorMessage === 'object' && errorMessage !== null) {
+        // If it's an object (like Flask-RESTful reqparse errors), extract the values
+        const values = Object.values(errorMessage);
+        if (values.length > 0) {
+          // Join multiple error messages if present
+          errorMessage = values.join(' ');
+        } else {
+          // Fallback for empty objects
+          errorMessage = JSON.stringify(errorMessage);
+        }
+      }
+
+      const customError: any = new Error(errorMessage);
       customError.response = error.response;
       return Promise.reject(customError);
     }

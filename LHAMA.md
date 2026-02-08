@@ -292,4 +292,14 @@ This implementation follows **Google's official security guidelines** and is use
 
 This setup gives you a **secure, scalable, and modern** system that meets all security requirements while keeping your frontend clean and user-friendly. 🚀
 
-**Next step**: Add token refresh logic and error handling for production. I'd be happy to expand on any part!
+### 5. Frontend Implementation: Robust Error Handling
+To ensure a seamless user experience, we implemented advanced error handling in `services/api.ts`. This logic specifically targets backend validation errors, which can return complex objects (e.g., `{"field": "error message"}`) or standard strings.
+
+**Key Logic:**
+- **Interceptor-Based**: A global Axios response interceptor catches all errors centrally.
+- **Object Parsing**: It detects if the error message is an object (common with Flask-RESTful).
+- **Value Extraction**: Instead of displaying `[object Object]`, it extracts the values from the error object and joins them into a readable string.
+- **Fallback**: Defaults to `JSON.stringify` if parsing fails, ensuring *something* is always visible for debugging.
+- **Debugging**: Logs the raw backend error to the console (`console.log('Error from backend:', errorData)`) to assist developers.
+
+This ensures that users always see clear, actionable error messages (e.g., "Invalid country" instead of `[object Object]`), while maintaining a robust fallback for unexpected error formats.
