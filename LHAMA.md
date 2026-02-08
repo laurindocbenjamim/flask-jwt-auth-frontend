@@ -223,6 +223,32 @@ server {
 
 ---
 
+### 4. Dual Cloud Storage Provider Integration (Business Logic)
+
+To support both **Google Drive** and **Microsoft OneDrive** seamlessly and securely, we implemented an isolated provider architecture. This approach prevents conflict between provider states and ensures robust navigation.
+
+| Feature | Implementation Detail | Benefit |
+|---------|-----------------------|---------|
+| **Isolated Components** | Created dedicated `GoogleDrive.tsx` and `OneDrive.tsx` components. | **Zero Logic Leakage**: Google logic never interferes with OneDrive, and vice-versa. |
+| **Independent Routing** | Configured `/drive` for Google and `/drive/microsoft` for OneDrive. | **Clean Navigation**: Users can switch contexts fully by changing routes. |
+| **Session-Based Connection** | Introduced `isConnected` state to track active provider sessions. | **Immediate Access**: Users see files immediately upon connection without waiting for global profile updates. |
+| **Auto-Auth Flow** | Self-healing calls: `fetchFiles` triggers `handleLogin` on 401/403 errors. | **Seamless Experience**: Re-authentication is automatic if tokens expire. |
+| **Navigation & Search UX** | Automatic clearing of search queries/breadcrumbs on provider switch. | **No Confusion**: Search context does not bleed between folders or providers. |
+
+**Component Flow:**
+1. **User Selection**: User clicks "Google" or "OneDrive" tab.
+2. **Route Change**: App navigates to the respective secure route.
+3. **Auto-Fetch**: Component attempts to fetch files (`driveService.listFiles` or `oneDriveService.listFiles`).
+4. **Validation**: 
+   - **Success**: Files display, `isConnected` set to true.
+   - **Failure (403)**: "Connect" screen displays, prompting secure OAuth login.
+
+**Search Logic:**
+- Search is performed client-side on the currently authenticated folder context.
+- Navigation into subfolders automatically clears search context to prevent "phantom" empty states.
+
+---
+
 ### 🔐 Critical Security Hardening
 1. **Frontend**:
    - Never store tokens in `localStorage` → Use **HTTP-only cookies** (add to React config)

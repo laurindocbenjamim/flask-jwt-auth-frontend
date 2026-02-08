@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import { AuthResponse, GenericResponse, User, UserListResponse, UserResponse, DriveFile, DriveListResponse } from '../types';
+import { AuthResponse, GenericResponse, User, UserListResponse, UserResponse, DriveFile, DriveListResponse, RegisterRequest } from '../types';
 import { config } from '../config';
 
 const API_BASE_URL = config.API_BASE_URL;
@@ -58,6 +58,10 @@ export const authService = {
 
   logout: async (): Promise<GenericResponse> => {
     return apiClient.post('/auth/logout');
+  },
+
+  register: async (userData: RegisterRequest): Promise<GenericResponse> => {
+    return apiClient.post('/user/register', userData);
   },
 
   googleLogin: async (): Promise<void> => {

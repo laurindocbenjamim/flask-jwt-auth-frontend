@@ -49,18 +49,15 @@ export const GoogleDrive: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            console.log(`[GoogleDrive] Fetching files for folder: ${folderId || 'root'}`);
             const response = await driveService.listFiles(folderId || undefined);
 
             if (response.success) {
-                console.log('[GoogleDrive] Fetch success:', response.files);
                 setFiles(response.files || []);
                 setIsConnected(true);
             } else {
                 throw new Error('Failed to load files');
             }
         } catch (err: any) {
-            console.error("[GoogleDrive] Fetch Error:", err);
             // If forbidden (403), it means we need to authenticate
             if (
                 err.message?.includes('403') ||
@@ -85,6 +82,7 @@ export const GoogleDrive: React.FC = () => {
         if (file.is_folder) {
             setCurrentFolderId(file.id);
             setBreadcrumbs([...breadcrumbs, { id: file.id, name: file.name }]);
+            setSearchQuery('');
         } else if (file.webViewLink) {
             window.open(file.webViewLink, '_blank');
         }
@@ -155,7 +153,7 @@ export const GoogleDrive: React.FC = () => {
 
                 <nav className="space-y-1">
                     <button
-                        onClick={() => { setCurrentFolderId(null); setBreadcrumbs([{ id: null, name: 'My Drive' }]); }}
+                        onClick={() => { setCurrentFolderId(null); setBreadcrumbs([{ id: null, name: 'My Drive' }]); setSearchQuery(''); }}
                         className={`w-full flex items-center gap-4 px-4 py-2 text-sm font-medium rounded-full transition-colors ${currentFolderId === null ? 'bg-blue-100/50 text-blue-700' : 'text-gray-600 hover:bg-gray-200/50'}`}
                     >
                         <Layout className="h-5 w-5" />
@@ -265,6 +263,7 @@ export const GoogleDrive: React.FC = () => {
                                                     const newBreadcrumbs = breadcrumbs.slice(0, idx + 1);
                                                     setBreadcrumbs(newBreadcrumbs);
                                                     setCurrentFolderId(crumb.id);
+                                                    setSearchQuery('');
                                                 }}
                                                 className={`hover:text-blue-600 px-2 py-1 rounded-lg transition-colors ${idx === breadcrumbs.length - 1 ? 'text-gray-900 cursor-default hover:text-gray-900' : 'text-gray-500'}`}
                                             >
@@ -280,6 +279,7 @@ export const GoogleDrive: React.FC = () => {
                                                     const parentCrumb = breadcrumbs[breadcrumbs.length - 2];
                                                     setBreadcrumbs(breadcrumbs.slice(0, -1));
                                                     setCurrentFolderId(parentCrumb.id);
+                                                    setSearchQuery('');
                                                 }}
                                                 className="text-gray-500 hover:text-blue-600 hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors text-sm font-medium flex items-center gap-1"
                                             >
@@ -351,7 +351,6 @@ export const GoogleDrive: React.FC = () => {
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                console.log('Sending to Properties:', file);
                                                                 // Removed window.alert
                                                                 navigate(`/drive/file/${file.id}`, { state: { file } });
                                                                 setActiveMenuId(null);
@@ -364,7 +363,6 @@ export const GoogleDrive: React.FC = () => {
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    console.log('Sending to Cross Reference:', file);
                                                                     // Removed window.alert
                                                                     navigate('/drive/cross-reference', { state: { file } });
                                                                     setActiveMenuId(null);

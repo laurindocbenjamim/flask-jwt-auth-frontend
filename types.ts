@@ -14,6 +14,16 @@ export interface User {
   has_microsoft_drive_access?: boolean; // OneDrive
 }
 
+export interface RegisterRequest {
+  authEmail: string;
+  authPassword: string;
+  firstName: string;
+  lastName: string;
+  countryName: string;
+  countryTelCode: string;
+  phoneNumber: string;
+}
+
 export interface DriveFile {
   id: string;
   name: string;
