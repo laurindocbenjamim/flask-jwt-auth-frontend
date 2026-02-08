@@ -4,20 +4,20 @@ import {
     Cloud, ChevronRight, Plus, Settings, HelpCircle, Layout,
     Search, Folder, File, FileText, Image as ImageIcon,
     Music, Video, Grid, List,
-    HardDrive, Download, Info, MoreVertical, Trash2, Globe, Star, Clock, Users, Share2
+    HardDrive, Download, Info, MoreVertical, Trash2, Star, Clock, Users, Share2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { driveService, authService } from '../services/api';
+import { oneDriveService, authService } from '../services/api';
 import { DriveFile } from '../types';
 
-export const GoogleDrive: React.FC = () => {
+export const OneDrive: React.FC = () => {
     const { user } = useAuth();
     const [files, setFiles] = useState<DriveFile[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-    const [breadcrumbs, setBreadcrumbs] = useState<{ id: string | null, name: string }[]>([{ id: null, name: 'My Drive' }]);
+    const [breadcrumbs, setBreadcrumbs] = useState<{ id: string | null, name: string }[]>([{ id: null, name: 'My Files' }]);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [isConnected, setIsConnected] = useState(false);
@@ -25,7 +25,7 @@ export const GoogleDrive: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const activeProvider = 'google';
+    const activeProvider = 'microsoft';
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -40,43 +40,48 @@ export const GoogleDrive: React.FC = () => {
     }, [activeMenuId]);
 
     const handleLogin = () => {
-        sessionStorage.setItem('pending_drive_provider', 'google');
+        sessionStorage.setItem('pending_drive_provider', 'microsoft');
         sessionStorage.setItem('auth_return_url', location.pathname + location.search);
-        authService.googleLogin();
+        authService.microsoftLogin();
     };
 
     const fetchFiles = async (folderId: string | null) => {
         setLoading(true);
         setError(null);
         try {
-            console.log(`[GoogleDrive] Fetching files for folder: ${folderId || 'root'}`);
-            const response = await driveService.listFiles(folderId || undefined);
+            console.log(`[OneDrive] Fetching files for folder: ${folderId || 'root'}`);
+            const response = await oneDriveService.listFiles(folderId || undefined);
 
             if (response.success) {
-                console.log('[GoogleDrive] Fetch success:', response.files);
+                console.log('[OneDrive] Fetch success:', response.files);
                 setFiles(response.files || []);
                 setIsConnected(true);
             } else {
                 throw new Error('Failed to load files');
             }
         } catch (err: any) {
-            console.error("[GoogleDrive] Fetch Error:", err);
+            console.error("[OneDrive] Fetch Error:", err);
             // If forbidden (403), it means we need to authenticate
             if (
                 err.message?.includes('403') ||
-                (err.response && err.response.status === 403)
+                (err.response && err.response.status === 403) ||
+                err.message?.includes('access not authorized')
             ) {
                 setIsConnected(false);
                 // Don't set error message for 403, just show connect screen
             } else {
-                setError(err.message || 'Error connecting to Google Drive');
+                setError(err.message || 'Error connecting to OneDrive');
+                // Keep isConnected true if it was a transient network error, 
+                // but if we want to be strict, we might set it to false. 
+                // For now, let's assume if it fails it might be auth related or server error.
+                // If it's a hard error, we might want to check if it's auth related.
             }
         } finally {
             setLoading(false);
         }
     };
 
-    // Initial fetch on mount or folder change
+    // Initial fetch on mount
     useEffect(() => {
         fetchFiles(currentFolderId);
     }, [currentFolderId]);
@@ -135,13 +140,13 @@ export const GoogleDrive: React.FC = () => {
                 <div className="px-2 mb-6">
                     <div className="bg-gray-200/50 p-1 rounded-xl flex">
                         <button
-                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all bg-white text-blue-600 shadow-sm"
+                            onClick={() => navigate('/drive')}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all text-gray-500 hover:text-gray-700"
                         >
                             <Cloud className="h-4 w-4" /> Google
                         </button>
                         <button
-                            onClick={() => navigate('/drive/microsoft')}
-                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all text-gray-500 hover:text-gray-700"
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all bg-white text-blue-800 shadow-sm"
                         >
                             <HardDrive className="h-4 w-4" /> OneDrive
                         </button>
@@ -155,7 +160,7 @@ export const GoogleDrive: React.FC = () => {
 
                 <nav className="space-y-1">
                     <button
-                        onClick={() => { setCurrentFolderId(null); setBreadcrumbs([{ id: null, name: 'My Drive' }]); }}
+                        onClick={() => { setCurrentFolderId(null); setBreadcrumbs([{ id: null, name: 'My Files' }]); }}
                         className={`w-full flex items-center gap-4 px-4 py-2 text-sm font-medium rounded-full transition-colors ${currentFolderId === null ? 'bg-blue-100/50 text-blue-700' : 'text-gray-600 hover:bg-gray-200/50'}`}
                     >
                         <Layout className="h-5 w-5" />
@@ -196,7 +201,7 @@ export const GoogleDrive: React.FC = () => {
                             </div>
                             <input
                                 type="text"
-                                placeholder="Search in Drive"
+                                placeholder="Search in OneDrive"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-[#f1f3f4] border-transparent focus:bg-white focus:ring-0 focus:border-transparent rounded-full py-3 pl-14 pr-6 text-base transition-all group-hover:bg-[#e8eaed]"
@@ -218,12 +223,12 @@ export const GoogleDrive: React.FC = () => {
                     {!showFiles ? (
                         <div className="flex flex-col items-center justify-center h-full pt-10">
                             <div className="max-w-md w-full bg-white rounded-3xl p-10 text-center border border-gray-100 shadow-sm">
-                                <div className={`h-20 w-20 ${activeProvider === 'google' ? 'bg-blue-50' : 'bg-sky-50'} rounded-2xl flex items-center justify-center mx-auto mb-8`}>
-                                    <Cloud className={`h-10 w-10 ${activeProvider === 'google' ? 'text-blue-600' : 'text-sky-700'}`} />
+                                <div className="h-20 w-20 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-8">
+                                    <HardDrive className="h-10 w-10 text-sky-700" />
                                 </div>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-4">Connect {activeProvider === 'google' ? 'Google Drive' : 'OneDrive'}</h2>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-4">Connect OneDrive</h2>
                                 <p className="text-gray-600 mb-8 leading-relaxed">
-                                    To browse your {activeProvider === 'google' ? 'Google Workspace' : 'Microsoft Cloud'} files, you need to sign in with {activeProvider === 'google' ? 'Google' : 'Microsoft'} permissions.
+                                    To browse your Microsoft Cloud files, you need to sign in with Microsoft permissions.
                                 </p>
 
                                 {error && (
@@ -241,15 +246,12 @@ export const GoogleDrive: React.FC = () => {
                                     <button
                                         onClick={handleLogin}
                                         disabled={loading}
-                                        className="w-full flex items-center justify-center gap-3 py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/30 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full flex items-center justify-center gap-3 py-3 px-6 bg-[#2F2F2F] hover:bg-black text-white rounded-xl font-semibold shadow-lg shadow-gray-500/30 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">
-                                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                        <svg className="h-5 w-5 fill-current" viewBox="0 0 23 23">
+                                            <path d="M0 0h11v11H0z" fill="#f25022" /><path d="M12 0h11v11H12z" fill="#7fba00" /><path d="M0 12h11v11H0z" fill="#00a4ef" /><path d="M12 12h11v11H12z" fill="#ffb900" />
                                         </svg>
-                                        Connect with Google
+                                        Connect with Microsoft
                                     </button>
                                 )}
                             </div>
@@ -351,8 +353,6 @@ export const GoogleDrive: React.FC = () => {
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                console.log('Sending to Properties:', file);
-                                                                // Removed window.alert
                                                                 navigate(`/drive/file/${file.id}`, { state: { file } });
                                                                 setActiveMenuId(null);
                                                             }}
@@ -364,8 +364,6 @@ export const GoogleDrive: React.FC = () => {
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    console.log('Sending to Cross Reference:', file);
-                                                                    // Removed window.alert
                                                                     navigate('/drive/cross-reference', { state: { file } });
                                                                     setActiveMenuId(null);
                                                                 }}

@@ -34,14 +34,18 @@ apiClient.interceptors.response.use(
   (error: AxiosError) => {
     if (error.response) {
       if (error.response.status === 401) {
-        // Redirect to login if not already there
-        if (!window.location.hash.includes('login') && !window.location.pathname.includes('login')) {
+        // Clear token on unauthorized access
+        localStorage.removeItem('token');
+        // Ideally redirect to login, but handling via window.location for now as this is outside React context
+        if (!window.location.hash.includes('login')) {
           window.location.href = '/#/login';
         }
       }
       // Return error message from backend if available
       const errorData = error.response.data as any;
-      return Promise.reject(new Error(errorData.message || `HTTP Error ${error.response.status}`));
+      const customError: any = new Error(errorData.message || `HTTP Error ${error.response.status}`);
+      customError.response = error.response;
+      return Promise.reject(customError);
     }
     return Promise.reject(new Error('An error occurred. Please check your network connection.'));
   }

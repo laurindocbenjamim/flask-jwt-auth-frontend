@@ -10,6 +10,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { Projects } from './pages/Portfolio';
 import { Elinara } from './pages/Elinara';
 import { GoogleDrive } from './pages/GoogleDrive';
+import { OneDrive } from './pages/OneDrive';
 import { FileProperties } from './pages/FileProperties';
 import { CrossReference } from './pages/CrossReference';
 import { AuthStatus } from './types';
@@ -60,6 +61,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <GoogleDrive />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="drive/microsoft"
+          element={
+            <ProtectedRoute>
+              <OneDrive />
             </ProtectedRoute>
           }
         />

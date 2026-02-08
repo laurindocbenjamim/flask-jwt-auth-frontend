@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, AuthStatus } from '../types';
 import { userService, authService } from '../services/api';
 
@@ -17,7 +18,12 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
   const [status, setStatus] = useState<AuthStatus>(AuthStatus.IDLE);
 
   const checkAuth = async () => {
-    setStatus(AuthStatus.LOADING);
+    // Only set loading state if we're not potentially already authenticated
+    // This prevents UI flashing/unmounting during background refreshes
+    if (status === AuthStatus.IDLE || status === AuthStatus.UNAUTHENTICATED) {
+      setStatus(AuthStatus.LOADING);
+    }
+
     try {
       const response = await userService.getCurrentUser();
 
@@ -54,9 +60,21 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
     window.location.href = '/#/login';
   };
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (status === AuthStatus.AUTHENTICATED) {
+      const returnUrl = sessionStorage.getItem('auth_return_url');
+      if (returnUrl) {
+        sessionStorage.removeItem('auth_return_url');
+        navigate(returnUrl);
+      }
+    }
+  }, [status, navigate]);
 
   return (
     <AuthContext.Provider value={{ user, status, logout, checkAuth, login }}>
