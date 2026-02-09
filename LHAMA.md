@@ -309,6 +309,6 @@ We have added a secure "Delete Account" feature in the user dashboard.
 
 **Key Features:**
 - **Irreversibility Warning**: Users are presented with a clear warning: *"Os seus dados serão mantidos por 30 dias para recuperação... EXCEPT faturas e dados fiscais"*.
-- **Data Export**: Before deletion, users can download their profile data as a JSON file.
+- **Data Export**: Before deletion, users can download a full copy of their personal data via the secure `/user/export` endpoint (GET). This returns a JSON file containing their profile information, export timestamp, and system notes.
 - **Secure Handling**: The request is sent to the secure `/dao/<user_id>` endpoint using the user's JWT (via HttpOnly cookies).
 - **Automatic Logout**: Upon successful deletion, the user is automatically logged out and redirected to the login page.

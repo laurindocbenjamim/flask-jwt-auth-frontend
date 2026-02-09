@@ -1,6 +1,7 @@
-import React from 'react';
-import { AlertTriangle, Download, Trash2, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertTriangle, Download, Trash2, X, Loader2 } from 'lucide-react';
 import { User } from '../types';
+import { userService } from '../services/api';
 
 interface DeleteAccountModalProps {
     isOpen: boolean;
@@ -10,18 +11,33 @@ interface DeleteAccountModalProps {
 }
 
 export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, onClose, onConfirm, userData }) => {
+    const [isExporting, setIsExporting] = useState(false);
+
     if (!isOpen) return null;
 
-    const handleExportData = () => {
-        const dataStr = JSON.stringify(userData, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+    const handleExportData = async () => {
+        try {
+            setIsExporting(true);
+            const response = await userService.exportUser();
 
-        const exportFileDefaultName = `user_data_${userData.username || 'export'}.json`;
+            // Check if response has data property as per API spec
+            const exportData = response.data || response;
 
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+            const exportFileDefaultName = `user_export_${userData.username || 'data'}_${new Date().toISOString().split('T')[0]}.json`;
+
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        } catch (error) {
+            console.error("Failed to export data", error);
+            alert("Failed to download data. Please try again.");
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     return (
@@ -56,10 +72,15 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({ isOpen, 
                         </p>
                         <button
                             onClick={handleExportData}
-                            className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors text-sm font-medium"
+                            disabled={isExporting}
+                            className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            <Download className="h-4 w-4" />
-                            Exportar Dados (JSON)
+                            {isExporting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Download className="h-4 w-4" />
+                            )}
+                            {isExporting ? 'Preparing Download...' : 'Exportar Dados (JSON)'}
                         </button>
                     </div>
                 </div>

@@ -148,6 +148,10 @@ export const userService = {
   deleteUser: async (id: number): Promise<GenericResponse> => {
     return apiClient.delete(`/user/dao/${id}`);
   },
+
+  exportUser: async (): Promise<{ status_code: number; data: any }> => {
+    return apiClient.get('/user/export');
+  },
 };
 
 export const adminService = {
