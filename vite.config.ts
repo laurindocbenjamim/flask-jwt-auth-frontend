@@ -7,6 +7,9 @@ export default defineConfig({
     host: true,
     port: 3000,
     open: false,
+    allowedHosts: [
+      'elinara-auth-test.onrender.com',
+    ],
     proxy: {
       '/api': {
         target: process.env.API_TARGET || 'http://localhost:5000',
