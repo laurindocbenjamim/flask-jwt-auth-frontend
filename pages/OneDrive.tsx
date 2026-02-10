@@ -23,6 +23,7 @@ export const OneDrive: React.FC = () => {
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [isDisconnectModalOpen, setIsDisconnectModalOpen] = useState(false);
     const [isDisconnecting, setIsDisconnecting] = useState(false);
+    const [disconnectError, setDisconnectError] = useState<string | null>(null);
     // const [isConnected, setIsConnected] = useState(false);
 
     const isConnected = user?.providers?.['microsoft']?.connected || false;
@@ -53,14 +54,15 @@ export const OneDrive: React.FC = () => {
 
     const handleDisconnect = async () => {
         setIsDisconnecting(true);
+        setDisconnectError(null);
         try {
             await authService.disconnectProvider('microsoft');
             await checkAuth();
             setFiles([]);
             setIsDisconnectModalOpen(false);
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert('Failed to disconnect');
+            setDisconnectError(e.message || 'Failed to disconnect');
         } finally {
             setIsDisconnecting(false);
         }
@@ -251,6 +253,7 @@ export const OneDrive: React.FC = () => {
                                     confirmText="Disconnect"
                                     type="danger"
                                     isLoading={isDisconnecting}
+                                    error={disconnectError}
                                 />
                             </div>
                         )}

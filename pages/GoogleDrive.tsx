@@ -23,6 +23,7 @@ export const GoogleDrive: React.FC = () => {
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [isDisconnectModalOpen, setIsDisconnectModalOpen] = useState(false);
     const [isDisconnecting, setIsDisconnecting] = useState(false);
+    const [disconnectError, setDisconnectError] = useState<string | null>(null);
     // const [isConnected, setIsConnected] = useState(false); // Rely on user.providers instead
 
     const isConnected = user?.providers?.['google']?.connected || false;
@@ -53,14 +54,15 @@ export const GoogleDrive: React.FC = () => {
 
     const handleDisconnect = async () => {
         setIsDisconnecting(true);
+        setDisconnectError(null);
         try {
             await authService.disconnectProvider('google');
             await checkAuth();
             setFiles([]);
             setIsDisconnectModalOpen(false);
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert('Failed to disconnect'); // Could replace this with a toast notification later
+            setDisconnectError(e.message || 'Failed to disconnect'); // Could replace this with a toast notification later
         } finally {
             setIsDisconnecting(false);
         }
@@ -247,6 +249,7 @@ export const GoogleDrive: React.FC = () => {
                                     confirmText="Disconnect"
                                     type="danger"
                                     isLoading={isDisconnecting}
+                                    error={disconnectError}
                                 />
                             </div>
                         )}

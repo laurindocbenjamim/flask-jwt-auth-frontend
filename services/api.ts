@@ -70,7 +70,7 @@ apiClient.interceptors.response.use(
         }
       }
       // Return error message from backend if available
-      console.log('Error from backend:', errorData); // Log for debugging
+      //console.log('Error from backend:', errorData); // Log for debugging
 
       let errorMessage = errorMessageStr || `HTTP Error ${error.response.status}`;
 
@@ -106,9 +106,9 @@ export const authService = {
 
   disconnectProvider: async (provider: string): Promise<GenericResponse> => {
     // Debug log to confirm what is being sent
-    console.log(`[Frontend Debug] disconnectProvider called for: ${provider}`);
+    //console.log(`[Frontend Debug] disconnectProvider called for: ${provider}`);
     const endpoint = `/auth/disconnect/${provider}`;
-    console.log(`[Frontend Debug] Sending POST request to: ${API_BASE_URL}${endpoint}`);
+    //console.log(`[Frontend Debug] Sending POST request to: ${API_BASE_URL}${endpoint}`);
     return apiClient.post(endpoint);
   },
 

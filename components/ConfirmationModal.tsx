@@ -11,6 +11,7 @@ interface ConfirmationModalProps {
     cancelText?: string;
     type?: 'danger' | 'warning' | 'info';
     isLoading?: boolean;
+    error?: string | null;
 }
 
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -23,6 +24,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     cancelText = 'Cancel',
     type = 'danger',
     isLoading = false,
+    error,
 }) => {
     if (!isOpen) return null;
 
@@ -91,6 +93,12 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                     <p className="text-gray-700 font-medium">
                         {message}
                     </p>
+                    {error && (
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                            <span className="font-bold block mb-1">Error:</span>
+                            {error}
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
