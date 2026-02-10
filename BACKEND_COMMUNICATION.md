@@ -20,71 +20,121 @@ const apiClient = axios.create({
 -   **Base URL**: All requests are prefixed with the configured base URL (default: `/api/v1`).
 -   **`withCredentials: true`**: This is critical. It ensures that the browser sends `HttpOnly` cookies (containing the JWT access token and session data) with every request.
 
-## 2. Authentication Flow
+## 2. Security Policies & Authentication
 
-The application uses a secure, cookie-based authentication mechanism.
+The application implements a robust security model focusing on **zero-trust** principles for the frontend.
 
-### Login
-1.  **Frontend**: Sends POST request to `/auth/login` with username and password.
-2.  **Backend**: Validates credentials and sets `HttpOnly` cookies for the access token.
-3.  **Frontend**: Receives success response. The browser automatically handles cookie storage.
+### 2.1 authentication (HttpOnly Cookies)
+-   **No LocalStorage**: Access tokens are **never** stored in `localStorage` or `sessionStorage` to prevent XSS attacks.
+-   **HttpOnly & Secure**: Tokens are stored in `HttpOnly`, `Secure`, `SameSite=Strict` cookies set by the backend.
+-   **Session Management**: The frontend validates the session by calling `/auth/session`. 
 
-### Request Interception (Token & CSRF)
-Every outgoing request is intercepted to inject necessary headers:
+### 2.2 CSRF Protection (Double Submit Cookie)
+To prevent Cross-Site Request Forgery (CSRF), the application uses a double-submit cookie pattern:
+1.  **Cookie**: The backend sets a readable `csrf_access_token` (or `XSRF-TOKEN`) cookie.
+2.  **Header**: The `axios` interceptor reads this cookie and injects it into the `X-CSRF-Token` header for every state-changing request (POST, PUT, DELETE).
+3.  **Validation**: The backend verifies that the cookie value matches the header value.
 
-```typescript
-apiClient.interceptors.request.use((config) => {
-  // 1. JWT Token (if stored in localStorage for non-cookie flows, though cookies are primary)
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+### 2.3 Error Handling & Auto-Refresh
+-   **401 Unauthorized**: Triggers an automatic redirect to `/login` *unless* it is a specific disconnect action, which degrades gracefully.
+-   **CSRF Errors**: If a `Missing CSRF token` error occurs, the frontend attempts to refresh the token via `/auth/refresh-csrf` and retries the original request once.
+-   **friendly Error Messages**: Raw backend errors (e.g., Python tuples) are parsed into user-friendly messages (e.g., "Your connection has expired. Please reconnect.").
 
-  // 2. CSRF Protection
-  // Reads the CSRF token from the 'csrf_access_token' or 'csrf_token' cookie.
-  const csrfToken = getCookie('csrf_access_token') || getCookie('csrf_token');
-  if (csrfToken) {
-    config.headers['X-CSRF-TOKEN'] = csrfToken;
-  }
+## 3. detailed API Endpoints
 
-  return config;
-});
-```
+### 3.1 Authentication (`authService`)
 
-### Response Interception (Error Handling)
-Responses are intercepted to handle global errors, particularly authentication failures.
+#### Login
+-   **Endpoint**: `POST /auth/login`
+-   **Request Body**:
+    ```json
+    {
+      "username": "user123",
+      "password": "securepassword"
+    }
+    ```
+-   **Response**:
+    ```json
+    {
+      "msg": "Login successful",
+      "user": { ... }
+    }
+    ```
+    *(Sets `access_token_cookie` and `csrf_access_token` cookies)*
 
--   **401 Unauthorized**:
-    -   **CSRF Errors**: If the error message indicates "Missing CSRF token", a warning is logged, but the user is *not* redirected. This prevents logout loops during session checks.
-    -   **Auth Errors**: For other 401s, the user is redirected to `/login` and local storage is cleared.
--   **Data Unwrapping**: The interceptor automatically unwraps `response.data`, so service calls receive the actual payload directly.
+#### Logout
+-   **Endpoint**: `POST /auth/logout`
+-   **Request Body**:
+    ```json
+    { "mode": "full" } // or "soft"
+    ```
+-   **Response**: `200 OK` (Clears cookies)
 
-## 3. Key API Endpoints
+#### Disconnect Provider
+-   **Endpoint**: `POST /auth/disconnect/{provider}`
+-   **Path Params**: `provider` ('google' | 'microsoft')
+-   **Response**: `200 OK`
 
-### Authentication (`authService`)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/auth/login` | User login (sets cookies). |
-| `POST` | `/auth/logout` | User logout (clears cookies). |
-| `POST` | `/auth/disconnect/{provider}` | Disconnects a cloud provider (e.g., 'google', 'microsoft'). |
-| `GET` | `/auth2/google/login` | Initiates Google OAuth flow. |
-| `GET` | `/auth2/microsoft/login` | Initiates Microsoft OAuth flow. |
+### 3.2 Cloud Drive Services
 
-### User Management (`userService`)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/user/dao` | Register a new user (admin). |
-| `GET` | `/admin/user` | Get current authenticated user details. |
-| `GET` | `/user/dao/{id}` | Get specific user details. |
-| `PUT` | `/user/dao/{id}` | Update user details. |
-| `DELETE` | `/user/dao/{id}` | Delete a user. |
+#### List Files (Google)
+-   **Endpoint**: `GET /drive/files`
+-   **Query Params**: `?folder_id=...` (optional)
+-   **Response**:
+    ```json
+    {
+      "success": true,
+      "files": [
+        {
+          "id": "123...",
+          "name": "Project Specs.pdf",
+          "mimeType": "application/pdf",
+          "is_folder": false,
+          "webViewLink": "https://..."
+        }
+      ],
+      "current_folder": "root"
+    }
+    ```
 
-### Cloud Drive Services (`driveService`, `oneDriveService`)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/drive/files` | List Google Drive files. |
-| `GET` | `/drive/microsoft/files` | List OneDrive files. |
-| `GET` | `/cloud/files` | Get aggregated files from all connected providers. |
+#### List Files (OneDrive)
+-   **Endpoint**: `GET /drive/microsoft/files`
+-   **Query Params**: `?folder_id=...` (optional)
+-   **Response**: Similar structure to Google Drive.
+
+### 3.3 User Management
+
+#### Register
+-   **Endpoint**: `POST /user/register`
+-   **Request Body**:
+    ```json
+    {
+      "username": "newuser",
+      "email": "user@example.com",
+      "password": "..."
+    }
+    ```
+
+#### Get Current User
+-   **Endpoint**: `GET /admin/user`
+-   **Response**:
+    ```json
+    {
+      "success": true,
+      "user": {
+        "id": 1,
+        "username": "admin",
+        "email": "admin@example.com",
+        "is_administrator": true,
+        "has_drive_access": true,
+        "has_microsoft_drive_access": false
+      }
+    }
+    ```
+
+#### Export Data
+-   **Endpoint**: `GET /user/export`
+-   **Response**: JSON file download containing full user profile and logs.
 
 ## 4. Development vs. Production
 

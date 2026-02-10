@@ -90,7 +90,25 @@ export const OneDrive: React.FC = () => {
                 // Don't set error message for 403, just show connect screen
                 setError('Access expired. Please reconnect.');
             } else {
-                setError(err.message || 'Error connecting to OneDrive');
+                let msg = err.message || 'Error connecting to OneDrive';
+
+                // Parse friendly message from raw backend tuple string if present
+                if (msg.includes('invalid_grant') || msg.includes('expired or revoked')) {
+                    msg = 'Your OneDrive session has expired. Please disconnect and reconnect.';
+                } else if (msg.startsWith("('") && msg.includes("', {")) {
+                    // Start cleaning up the Python tuple string to just get the message
+                    try {
+                        // Extract the first quoted string: ('message', ...)
+                        const parts = msg.split("',");
+                        if (parts.length > 0) {
+                            msg = parts[0].replace(/^\('/, '');
+                        }
+                    } catch (e) {
+                        // Keep original if parsing fails
+                    }
+                }
+
+                setError(msg);
                 // Keep isConnected true if it was a transient network error, 
                 // but if we want to be strict, we might set it to false. 
                 // For now, let's assume if it fails it might be auth related or server error.

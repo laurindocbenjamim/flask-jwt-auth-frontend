@@ -90,7 +90,28 @@ export const GoogleDrive: React.FC = () => {
                 // However, since we rely on user state, we might want to prompt a refresh or re-login
                 setError('Access expired. Please reconnect.');
             } else {
-                setError(err.message || 'Error connecting to Google Drive');
+                let msg = err.message || 'Error connecting to Google Drive';
+
+                // Parse friendly message from raw backend tuple string if present
+                // Example: ('invalid_grant: Token has been expired or revoked.', {'error': ...})
+                if (msg.includes('invalid_grant') || msg.includes('expired or revoked')) {
+                    msg = 'Your Google Drive connection has expired. Please reconnect.';
+                } else if (typeof msg === 'string' && msg.includes("('") && msg.includes("', {")) {
+                    // Start cleaning up the Python tuple string to just get the message
+                    try {
+                        // Extract the first quoted string: ('message', ...)
+                        // Matches ('some message', 
+                        const match = msg.match(/^\('([^']+)',/);
+                        if (match && match[1]) {
+                            msg = match[1];
+                        }
+                    } catch (e) {
+                        // Keep original if parsing fails
+                        console.warn('Failed to parse error tuple:', e);
+                    }
+                }
+
+                setError(msg);
             }
         } finally {
             setLoading(false);
@@ -363,12 +384,22 @@ export const GoogleDrive: React.FC = () => {
                             ) : error ? (
                                 <div className="text-center py-20 bg-red-50 dark:bg-red-900/20 rounded-3xl border border-red-100 dark:border-red-800">
                                     <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
-                                    <button
-                                        onClick={() => fetchFiles(currentFolderId)}
-                                        className="mt-4 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                                    >
-                                        Try Again
-                                    </button>
+                                    <div className="flex flex-col gap-2 items-center mt-4">
+                                        <button
+                                            onClick={() => fetchFiles(currentFolderId)}
+                                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                                        >
+                                            Try Again
+                                        </button>
+                                        {(error?.includes('expired') || error?.includes('reconnect') || error?.includes('revoked')) && (
+                                            <button
+                                                onClick={() => setIsDisconnectModalOpen(true)}
+                                                className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200 transition-colors"
+                                            >
+                                                Reconnect Account
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             ) : filteredFiles.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-32">
