@@ -1,5 +1,14 @@
-import axios, { AxiosError } from 'axios';
-import { AuthResponse, GenericResponse, User, UserListResponse, UserResponse, DriveFile, DriveListResponse, RegisterRequest } from '../types';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import {
+  AuthResponse,
+  GenericResponse,
+  User,
+  UserListResponse,
+  UserResponse,
+  DriveFile,
+  DriveListResponse,
+  RegisterRequest
+} from '../types';
 import { config } from '../config';
 
 const API_BASE_URL = config.API_BASE_URL;
@@ -7,33 +16,81 @@ const API_BASE_URL = config.API_BASE_URL;
 // Create centralized Axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Key for handling HttpOnly cookies
+  withCredentials: true, // Para cookies HttpOnly
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Helper to get cookie by name
+// Helper para obter cookie
 const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
   return null;
 };
 
-// Request Interceptor: Inject token if available
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+// Helper para remover cookie
+const deleteCookie = (name: string): void => {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+};
 
-    // Inject CSRF token from cookie if available
-    // Try common names for CSRF cookies
-    const csrfToken = getCookie('csrf_access_token') || getCookie('csrf_token');
-    if (csrfToken) {
-      config.headers['X-CSRF-TOKEN'] = csrfToken;
+// Cache para evitar múltiplas verificações
+let csrfTokenValidated = false;
+let csrfValidationInProgress = false;
+
+// Verificar se método precisa de CSRF
+const requiresCsrfToken = (method?: string): boolean => {
+  const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  return stateChangingMethods.includes((method || '').toUpperCase());
+};
+
+// Verificar se temos CSRF token disponível
+const hasCsrfToken = (): boolean => {
+  // Verificar cookies comuns de CSRF
+  return !!(
+    getCookie('csrf_access_token') ||
+    getCookie('csrf_token') ||
+    getCookie('X-CSRF-Token') ||
+    getCookie('XSRF-TOKEN')
+  );
+};
+
+// Obter CSRF token do cookie
+const getCsrfTokenFromCookie = (): string | null => {
+  // Tentar diferentes nomes comuns de cookies CSRF
+  return (
+    getCookie('csrf_access_token') ||
+    getCookie('csrf_token') ||
+    getCookie('X-CSRF-Token') ||
+    getCookie('XSRF-TOKEN')
+  );
+};
+
+// Request Interceptor
+apiClient.interceptors.request.use(
+  async (config: InternalAxiosRequestConfig) => {
+    // Para métodos que modificam estado, adicionar CSRF token
+    if (requiresCsrfToken(config.method)) {
+      const csrfToken = getCsrfTokenFromCookie();
+
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      } else {
+        console.warn('CSRF token não encontrado para requisição:', {
+          method: config.method,
+          url: config.url,
+          requiresCsrf: requiresCsrfToken(config.method)
+        });
+
+        // Se é uma requisição crítica (não GET), logamos o aviso
+        if (config.method?.toUpperCase() !== 'GET') {
+          console.warn('Atenção: Requisição sem CSRF token enviado. O backend pode rejeitar.');
+        }
+      }
     }
 
     return config;
@@ -43,85 +100,189 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Handle global errors (e.g., 401 Unauthorized)
+// Response Interceptor
 apiClient.interceptors.response.use(
   (response) => {
-    // Axios wraps the response data in a 'data' property. 
-    // If the backend returns the actual payload directly, we return response.data.
+    // Verificar se a resposta contém um novo CSRF token
+    // (útil para refresh de sessão ou após login)
+    if (response.headers['x-csrf-token'] || response.data?.csrf_token) {
+      const newCsrfToken = response.headers['x-csrf-token'] || response.data.csrf_token;
+      // O backend deve definir o cookie, mas mantemos lógica para segurança
+      console.debug('Novo CSRF token recebido na resposta');
+    }
+
     return response.data;
   },
-  (error: AxiosError) => {
-    if (error.response) {
-      const errorData = error.response.data as any;
-      const errorMessageStr = errorData?.msg || errorData?.message || errorData?.error;
+  async (error: AxiosError) => {
+    const originalRequest = error.config as any;
 
-      if (error.response.status === 401) {
-        // Check if it's a CSRF error
-        if (errorMessageStr === "Missing CSRF token") {
-          console.warn("CSRF Token missing, but session might still be valid.");
-          // Do NOT redirect to login, just let the error propagate
-        } else {
-          // Clear token on unauthorized access
-          localStorage.removeItem('token');
-          // Ideally redirect to login, but handling via window.location for now as this is outside React context
-          if (!window.location.hash.includes('login')) {
-            window.location.href = '/#/login';
+    if (error.response) {
+      const status = error.response.status;
+      const errorData = error.response.data as any;
+      const errorMessage = errorData?.msg || errorData?.message || errorData?.error;
+
+      // Caso 1: CSRF token inválido ou expirado
+      const isCsrfError = status === 403 && (
+        errorMessage?.includes('CSRF') ||
+        errorMessage?.includes('csrf') ||
+        errorData?.code === 'CSRF_ERROR'
+      );
+
+      if (isCsrfError) {
+        console.warn('Erro CSRF detectado:', errorMessage);
+
+        // Se temos uma requisição original e ainda não tentamos renovar
+        if (originalRequest && !originalRequest._retryCsrf) {
+          originalRequest._retryCsrf = true;
+
+          // Tentar uma requisição GET para forçar o backend a enviar novo cookie
+          try {
+            await apiClient.get('/auth/refresh-csrf', {
+              // Esta rota deve existir no backend para forçar refresh do CSRF
+              // ou usar uma rota existente que sempre retorna CSRF cookie
+            });
+
+            // Obter novo token do cookie
+            const newCsrfToken = getCsrfTokenFromCookie();
+
+            if (newCsrfToken && requiresCsrfToken(originalRequest.method)) {
+              originalRequest.headers['X-CSRF-Token'] = newCsrfToken;
+            }
+
+            // Retentar a requisição original
+            return apiClient(originalRequest);
+          } catch (refreshError) {
+            console.error('Falha ao atualizar CSRF token:', refreshError);
+            // Não tentamos novamente, propagamos o erro
           }
         }
+
+        // Se chegou aqui, não conseguimos resolver o CSRF
+        const csrfError = new Error(
+          'Erro de segurança (CSRF). Por favor, recarregue a página e tente novamente.'
+        ) as any;
+        csrfError.isCsrfError = true;
+        csrfError.response = error.response;
+        return Promise.reject(csrfError);
       }
-      // Return error message from backend if available
-      //console.log('Error from backend:', errorData); // Log for debugging
 
-      let errorMessage = errorMessageStr || `HTTP Error ${error.response.status}`;
+      // Caso 2: Não autorizado (401) - Sessão expirada
+      else if (status === 401) {
+        console.warn('Sessão expirada ou inválida');
 
-      // Ensure the error message is a string, not an object
-      if (typeof errorMessage === 'object' && errorMessage !== null) {
-        // If it's an object (like Flask-RESTful reqparse errors), extract the values
-        const values = Object.values(errorMessage);
-        if (values.length > 0) {
-          // Join multiple error messages if present
-          errorMessage = values.join(' ');
-        } else {
-          // Fallback for empty objects
-          errorMessage = JSON.stringify(errorMessage);
+        // Limpar qualquer estado de CSRF
+        csrfTokenValidated = false;
+
+        // Redirecionar para login se não estiver na página de login
+        if (!window.location.hash.includes('login') &&
+          !window.location.pathname.includes('login')) {
+          // Armazenar a URL atual para redirecionamento após login
+          sessionStorage.setItem('redirectAfterLogin', window.location.href);
+          window.location.href = '/#/login';
         }
+
+        const authError = new Error('Sua sessão expirou. Por favor, faça login novamente.') as any;
+        authError.isAuthError = true;
+        authError.response = error.response;
+        return Promise.reject(authError);
       }
 
-      const customError: any = new Error(errorMessage);
+      // Caso 3: Acesso proibido (403) - Sem CSRF (outros motivos)
+      else if (status === 403 && !isCsrfError) {
+        console.warn('Acesso proibido:', errorMessage);
+
+        const forbiddenError = new Error(
+          errorMessage || 'Você não tem permissão para realizar esta ação.'
+        ) as any;
+        forbiddenError.isForbiddenError = true;
+        forbiddenError.response = error.response;
+        return Promise.reject(forbiddenError);
+      }
+
+      // Formatar mensagem de erro para outros casos
+      let formattedErrorMessage = errorMessage || `Erro HTTP ${status}`;
+
+      if (typeof formattedErrorMessage === 'object') {
+        const values = Object.values(formattedErrorMessage);
+        formattedErrorMessage = values.length > 0
+          ? values.join(' ')
+          : JSON.stringify(formattedErrorMessage);
+      }
+
+      const customError = new Error(formattedErrorMessage) as any;
       customError.response = error.response;
+      customError.status = status;
+
       return Promise.reject(customError);
     }
-    return Promise.reject(new Error('An error occurred. Please check your network connection.'));
+
+    // Erro de rede ou timeout
+    const networkError = new Error(
+      error.code === 'ECONNABORTED'
+        ? 'A requisição expirou. Verifique sua conexão e tente novamente.'
+        : 'Erro de conexão. Verifique sua conexão com a internet.'
+    ) as any;
+    networkError.isNetworkError = true;
+    networkError.code = error.code;
+
+    return Promise.reject(networkError);
   }
 );
 
+// Serviços de Autenticação
 export const authService = {
   login: async (credentials: { username: string; password: string }): Promise<AuthResponse> => {
-    return apiClient.post('/auth/login', credentials);
+    const response = await apiClient.post<any, AuthResponse>('/auth/login', credentials);
+
+    // Após login, verificar se temos CSRF token
+    if (!hasCsrfToken()) {
+      console.warn('CSRF token não encontrado após login');
+      // Podemos tentar uma requisição para obter CSRF se necessário
+      try {
+        await apiClient.get('/auth/session'); // Rota que deve retornar CSRF cookie
+      } catch (error) {
+        console.warn('Não foi possível verificar CSRF após login:', error);
+      }
+    }
+
+    return response;
   },
 
   logout: async (mode: 'full' | 'soft' = 'full'): Promise<GenericResponse> => {
-    return apiClient.post('/auth/logout', { mode });
+    try {
+      const response = await apiClient.post<any, GenericResponse>('/auth/logout', { mode });
+      return response;
+    } finally {
+      // Limpar estado de CSRF após logout
+      csrfTokenValidated = false;
+    }
   },
 
   disconnectProvider: async (provider: string): Promise<GenericResponse> => {
-    // Debug log to confirm what is being sent
-    //console.log(`[Frontend Debug] disconnectProvider called for: ${provider}`);
     const endpoint = `/auth/disconnect/${provider}`;
-    //console.log(`[Frontend Debug] Sending POST request to: ${API_BASE_URL}${endpoint}`);
     return apiClient.post(endpoint);
   },
 
   register: async (userData: RegisterRequest): Promise<GenericResponse> => {
-    return apiClient.post('/user/register', userData);
+    const response = await apiClient.post<any, GenericResponse>('/user/register', userData);
+
+    // Após registro, verificar CSRF (similar ao login)
+    if (!hasCsrfToken()) {
+      console.debug('Verificando CSRF após registro');
+    }
+
+    return response;
   },
 
+  // Login social - redirecionamentos
   googleLogin: async (): Promise<void> => {
     window.location.href = `${API_BASE_URL}/auth2/google/login`;
   },
 
   googleLogout: async (): Promise<GenericResponse> => {
-    return apiClient.get('/auth2/google/logout');
+    const response = await apiClient.get<any, GenericResponse>('/auth2/google/logout');
+    csrfTokenValidated = false;
+    return response;
   },
 
   githubLogin: async (): Promise<void> => {
@@ -133,31 +294,47 @@ export const authService = {
   },
 
   githubLogout: async (): Promise<GenericResponse> => {
-    return apiClient.post('/auth2/github/logout');
+    const response = await apiClient.post<any, GenericResponse>('/auth2/github/logout');
+    csrfTokenValidated = false;
+    return response;
   },
 
   microsoftLogin: async (): Promise<void> => {
     window.location.href = `${API_BASE_URL}/auth2/microsoft/login`;
   },
+
+  // Verificar status da sessão
+  checkSession: async (): Promise<{ valid: boolean; user?: any }> => {
+    try {
+      const response = await apiClient.get<any, any>('/auth/session');
+      return { valid: true, user: response.user };
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        return { valid: false };
+      }
+      throw error;
+    }
+  },
+
+  // Verificar se temos CSRF token (útil para debug)
+  checkCsrfToken: (): { hasToken: boolean; tokenName?: string } => {
+    const token = getCsrfTokenFromCookie();
+    return {
+      hasToken: !!token,
+      tokenName: token ? 'csfr_token_encontrado' : undefined
+    };
+  }
 };
 
+// Serviço de Usuários
 export const userService = {
   register: async (userData: User): Promise<GenericResponse> => {
     return apiClient.post('/user/dao', userData);
   },
 
   getCurrentUser: async (): Promise<{ success: boolean; user: User }> => {
-    // The backend now returns { success: true, user: { ... } }
-    const data = await apiClient.get<{ success: boolean; user: any }>('/admin/user');
-    // Ensure we typecast or transform the response correctly
-    // The interceptor returns response.data, so 'data' here is the actual payload.
-    // However, TypeScript might infer 'data' as AxiosResponse if not careful.
-    // Since we returned response.data in interceptor, 'data' IS the payload.
-    // We cast it to likely shape.
-
-    // Check if data has user property directly (which it should based on previous implementation)
-    // The previous implementation did: handleResponse(response) -> returns json.
-    const payload = data as unknown as { success: boolean; user: any };
+    const response = await apiClient.get<{ success: boolean; user: any }>('/admin/user');
+    const payload = response as unknown as { success: boolean; user: any };
 
     if (payload.user) {
       payload.user = {
@@ -190,12 +367,14 @@ export const userService = {
   },
 };
 
+// Serviço de Administração
 export const adminService = {
   getAllUsers: async (): Promise<UserListResponse> => {
     return apiClient.get('/user/manager');
   }
 };
 
+// Serviço do Google Drive
 export const driveService = {
   listFiles: async (folderId?: string): Promise<DriveListResponse> => {
     const url = folderId
@@ -223,6 +402,7 @@ export const driveService = {
   },
 };
 
+// Serviço do OneDrive
 export const oneDriveService = {
   listFiles: async (folderId?: string): Promise<DriveListResponse> => {
     const url = folderId
@@ -234,7 +414,6 @@ export const oneDriveService = {
 
     const files = (driveData.files || []).map((file: any) => ({
       ...file,
-      // Ensure backend fields map to frontend expectations
       isFolder: file.is_folder || file.folder !== undefined,
       modifiedTime: file.lastModifiedDateTime,
       name: file.name
@@ -252,12 +431,14 @@ export const oneDriveService = {
   },
 };
 
+// Serviço de Nuvem Agregada
 export const cloudService = {
   getAggregatedFiles: async (): Promise<import('../types').CloudFilesResponse> => {
     return apiClient.get('/cloud/files');
   }
 };
 
+// Serviço de Arquivos em Nuvem
 export const cloudFilesService = {
   saveFiles: async (files: Array<{ id: string; name: string; provider: string }>): Promise<GenericResponse> => {
     return apiClient.post('/cloud-files', { files });
@@ -267,3 +448,17 @@ export const cloudFilesService = {
     return apiClient.get('/cloud-files');
   }
 };
+
+// Exportar função para debug (apenas desenvolvimento)
+if (process.env.NODE_ENV === 'development') {
+  (window as any).debugAuth = {
+    getCsrfToken: getCsrfTokenFromCookie,
+    hasCsrfToken,
+    checkCookies: () => {
+      console.log('Cookies atuais:', document.cookie);
+      console.log('CSRF token encontrado:', getCsrfTokenFromCookie());
+    }
+  };
+}
+
+export default apiClient;
