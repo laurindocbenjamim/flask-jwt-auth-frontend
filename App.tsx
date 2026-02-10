@@ -1,6 +1,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
@@ -12,7 +13,9 @@ import { Elinara } from './pages/Elinara';
 import { GoogleDrive } from './pages/GoogleDrive';
 import { OneDrive } from './pages/OneDrive';
 import { FileProperties } from './pages/FileProperties';
+
 import { CrossReference } from './pages/CrossReference';
+import { CloudFiles } from './pages/CloudFiles';
 import { AuthStatus } from './types';
 
 // Protected Route Component
@@ -116,7 +119,9 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ThemeProvider>
+          <AppRoutes />
+        </ThemeProvider>
       </AuthProvider>
     </HashRouter>
   );

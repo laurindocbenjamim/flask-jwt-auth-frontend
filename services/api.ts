@@ -13,10 +13,29 @@ const apiClient = axios.create({
   },
 });
 
-// Request Interceptor: No token injection needed with cookies
-// Browser automatically handles cookie transmission due to withCredentials: true
+// Helper to get cookie by name
+const getCookie = (name: string): string | null => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+};
+
+// Request Interceptor: Inject token if available
 apiClient.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Inject CSRF token from cookie if available
+    // Try common names for CSRF cookies
+    const csrfToken = getCookie('csrf_access_token') || getCookie('csrf_token');
+    if (csrfToken) {
+      config.headers['X-CSRF-TOKEN'] = csrfToken;
+    }
+
     return config;
   },
   (error) => {
@@ -33,19 +52,27 @@ apiClient.interceptors.response.use(
   },
   (error: AxiosError) => {
     if (error.response) {
+      const errorData = error.response.data as any;
+      const errorMessageStr = errorData?.msg || errorData?.message || errorData?.error;
+
       if (error.response.status === 401) {
-        // Clear token on unauthorized access
-        localStorage.removeItem('token');
-        // Ideally redirect to login, but handling via window.location for now as this is outside React context
-        if (!window.location.hash.includes('login')) {
-          window.location.href = '/#/login';
+        // Check if it's a CSRF error
+        if (errorMessageStr === "Missing CSRF token") {
+          console.warn("CSRF Token missing, but session might still be valid.");
+          // Do NOT redirect to login, just let the error propagate
+        } else {
+          // Clear token on unauthorized access
+          localStorage.removeItem('token');
+          // Ideally redirect to login, but handling via window.location for now as this is outside React context
+          if (!window.location.hash.includes('login')) {
+            window.location.href = '/#/login';
+          }
         }
       }
       // Return error message from backend if available
-      const errorData = error.response.data as any;
       console.log('Error from backend:', errorData); // Log for debugging
 
-      let errorMessage = errorData?.message || errorData?.error || `HTTP Error ${error.response.status}`;
+      let errorMessage = errorMessageStr || `HTTP Error ${error.response.status}`;
 
       // Ensure the error message is a string, not an object
       if (typeof errorMessage === 'object' && errorMessage !== null) {
@@ -73,8 +100,16 @@ export const authService = {
     return apiClient.post('/auth/login', credentials);
   },
 
-  logout: async (): Promise<GenericResponse> => {
-    return apiClient.post('/auth/logout');
+  logout: async (mode: 'full' | 'soft' = 'full'): Promise<GenericResponse> => {
+    return apiClient.post('/auth/logout', { mode });
+  },
+
+  disconnectProvider: async (provider: string): Promise<GenericResponse> => {
+    // Debug log to confirm what is being sent
+    console.log(`[Frontend Debug] disconnectProvider called for: ${provider}`);
+    const endpoint = `/auth/disconnect/${provider}`;
+    console.log(`[Frontend Debug] Sending POST request to: ${API_BASE_URL}${endpoint}`);
+    return apiClient.post(endpoint);
   },
 
   register: async (userData: RegisterRequest): Promise<GenericResponse> => {
@@ -112,6 +147,7 @@ export const userService = {
   },
 
   getCurrentUser: async (): Promise<{ success: boolean; user: User }> => {
+    // The backend now returns { success: true, user: { ... } }
     const data = await apiClient.get<{ success: boolean; user: any }>('/admin/user');
     // Ensure we typecast or transform the response correctly
     // The interceptor returns response.data, so 'data' here is the actual payload.
@@ -214,6 +250,12 @@ export const oneDriveService = {
   getFileDetail: async (fileId: string): Promise<DriveFile> => {
     return apiClient.get(`/drive/microsoft/file/${fileId}`);
   },
+};
+
+export const cloudService = {
+  getAggregatedFiles: async (): Promise<import('../types').CloudFilesResponse> => {
+    return apiClient.get('/cloud/files');
+  }
 };
 
 export const cloudFilesService = {

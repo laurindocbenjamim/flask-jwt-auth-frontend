@@ -12,6 +12,34 @@ export interface User {
   is_administrator?: boolean;
   has_drive_access?: boolean; // Google Drive
   has_microsoft_drive_access?: boolean; // OneDrive
+  providers?: Providers;
+}
+
+export interface Provider {
+  connected: boolean;
+  email: string | null;
+}
+
+export interface Providers {
+  [key: string]: Provider;
+}
+
+export interface CloudFile {
+  id: string;
+  name: string;
+  type: string;
+  webViewLink?: string;
+  iconLink?: string;
+}
+
+export interface CloudFilesResponse {
+  count: number;
+  data: {
+    provider: string;
+    status: 'success' | 'error';
+    message?: string;
+    files?: CloudFile[];
+  }[];
 }
 
 export interface RegisterRequest {

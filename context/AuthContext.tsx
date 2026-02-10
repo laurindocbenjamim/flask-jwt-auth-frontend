@@ -40,12 +40,15 @@ export const AuthProvider = ({ children }: { children?: ReactNode }) => {
   };
 
   const login = async (token: string) => {
-    // Token is stored in HttpOnly cookie by the backend
+    if (token) {
+      localStorage.setItem('token', token);
+    }
     await checkAuth();
   };
 
   const logout = async () => {
     // Clear local state immediately for better UX
+    localStorage.removeItem('token');
     setUser(null);
     setStatus(AuthStatus.UNAUTHENTICATED);
 
