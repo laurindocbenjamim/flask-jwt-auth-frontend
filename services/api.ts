@@ -168,10 +168,43 @@ apiClient.interceptors.response.use(
 
       // Caso 2: Não autorizado (401) - Sessão expirada
       else if (status === 401) {
+
+        // Check if it's actually a CSRF error (Flask-JWT-Extended sends 401 for Missing CSRF)
+        if (errorMessage?.includes('CSRF') || errorMessage?.includes('csrf') || errorMessage?.includes('Missing CSRF token')) {
+          console.warn('Erro CSRF (401) detectado:', errorMessage);
+          // Treat as CSRF retry flow same as Case 1
+          if (originalRequest && !originalRequest._retryCsrf) {
+            originalRequest._retryCsrf = true;
+            try {
+              await apiClient.get('/auth/refresh-csrf');
+              const newCsrfToken = getCsrfTokenFromCookie();
+              if (newCsrfToken && requiresCsrfToken(originalRequest.method)) {
+                originalRequest.headers['X-CSRF-Token'] = newCsrfToken;
+              }
+              return apiClient(originalRequest);
+            } catch (refreshError) {
+              console.error('Falha ao atualizar CSRF token (401):', refreshError);
+            }
+          }
+          // If retry failed, do NOT redirect to login for Disconnect actions, per user request
+          if (originalRequest?.url?.includes('/disconnect')) {
+            console.warn('Disconnect falhou por CSRF/Auth. Redirecionando para Dashboard conforme solicitado.');
+            window.location.href = '/#/dashboard';
+            return Promise.reject(new Error('Falha ao desconectar. Redirecionando...'));
+          }
+        }
+
         console.warn('Sessão expirada ou inválida');
 
         // Limpar qualquer estado de CSRF
         csrfTokenValidated = false;
+
+        // Check if this is a disconnect request - avoid kicking to login if it fails
+        if (originalRequest?.url?.includes('/disconnect')) {
+          console.warn('Disconnect falhou (401). Redirecionando para Dashboard.');
+          window.location.href = '/#/dashboard';
+          return Promise.reject(new Error('Sessão expirada durante disconnect.'));
+        }
 
         // Redirecionar para login se não estiver na página de login
         if (!window.location.hash.includes('login') &&
