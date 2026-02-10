@@ -27,7 +27,7 @@ The application implements a robust security model focusing on **zero-trust** pr
 ### 2.1 authentication (HttpOnly Cookies)
 -   **No LocalStorage**: Access tokens are **never** stored in `localStorage` or `sessionStorage` to prevent XSS attacks.
 -   **HttpOnly & Secure**: Tokens are stored in `HttpOnly`, `Secure`, `SameSite=Strict` cookies set by the backend.
--   **Session Management**: The frontend validates the session by calling `/auth/session`. 
+-   **Session Management**: The frontend validates the session by calling `/admin/user` (which doubles as session validation). 
 
 ### 2.2 CSRF Protection (Double Submit Cookie)
 To prevent Cross-Site Request Forgery (CSRF), the application uses a double-submit cookie pattern:
@@ -37,7 +37,7 @@ To prevent Cross-Site Request Forgery (CSRF), the application uses a double-subm
 
 ### 2.3 Error Handling & Auto-Refresh
 -   **401 Unauthorized**: Triggers an automatic redirect to `/login` *unless* it is a specific disconnect action, which degrades gracefully.
--   **CSRF Errors**: If a `Missing CSRF token` error occurs, the frontend attempts to refresh the token via `/auth/refresh-csrf` and retries the original request once.
+-   **CSRF Errors**: If a `Missing CSRF token` error occurs, the frontend will log a warning. The user may need to perform a new action or reload to receive a fresh cookie.
 -   **friendly Error Messages**: Raw backend errors (e.g., Python tuples) are parsed into user-friendly messages (e.g., "Your connection has expired. Please reconnect.").
 
 ## 3. detailed API Endpoints

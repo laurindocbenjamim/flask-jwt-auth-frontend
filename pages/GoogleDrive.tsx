@@ -68,45 +68,47 @@ export const GoogleDrive: React.FC = () => {
         }
     };
 
+    const [forceShowConnect, setForceShowConnect] = useState(false);
+
     const fetchFiles = async (folderId: string | null) => {
         setLoading(true);
         setError(null);
+        setForceShowConnect(false);
         try {
             const response = await driveService.listFiles(folderId || undefined);
 
             if (response.success) {
                 setFiles(response.files || []);
-                // setIsConnected(true); // Handled by user state
             } else {
                 throw new Error('Failed to load files');
             }
         } catch (err: any) {
-            // If forbidden (403), it means we need to authenticate
+            // Check for specific drive auth error from api.ts or 401 status
             if (
+                err.isDriveAuthError ||
+                err.response?.status === 401 ||
+                err.message?.includes('401') ||
                 err.message?.includes('403') ||
                 (err.response && err.response.status === 403)
             ) {
-                // Don't set error message for 403, just show connect screen
-                // However, since we rely on user state, we might want to prompt a refresh or re-login
-                setError('Access expired. Please reconnect.');
+                // Show connect screen instead of error message
+                setForceShowConnect(true);
+                // Optionally clear files to be safe
+                setFiles([]);
             } else {
                 let msg = err.message || 'Error connecting to Google Drive';
 
                 // Parse friendly message from raw backend tuple string if present
-                // Example: ('invalid_grant: Token has been expired or revoked.', {'error': ...})
                 if (msg.includes('invalid_grant') || msg.includes('expired or revoked')) {
                     msg = 'Your Google Drive connection has expired. Please reconnect.';
+                    setForceShowConnect(true); // Also show connect screen for invalid grant
                 } else if (typeof msg === 'string' && msg.includes("('") && msg.includes("', {")) {
-                    // Start cleaning up the Python tuple string to just get the message
                     try {
-                        // Extract the first quoted string: ('message', ...)
-                        // Matches ('some message', 
                         const match = msg.match(/^\('([^']+)',/);
                         if (match && match[1]) {
                             msg = match[1];
                         }
                     } catch (e) {
-                        // Keep original if parsing fails
                         console.warn('Failed to parse error tuple:', e);
                     }
                 }
@@ -168,7 +170,7 @@ export const GoogleDrive: React.FC = () => {
         );
     }, [files, searchQuery]);
 
-    const showFiles = isConnected;
+    const showFiles = isConnected && !forceShowConnect;
 
     return (
         <div className="flex h-screen bg-[#f8f9fa] dark:bg-gray-900 overflow-hidden -mt-16 pt-16">

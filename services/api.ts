@@ -131,33 +131,7 @@ apiClient.interceptors.response.use(
       if (isCsrfError) {
         console.warn('Erro CSRF detectado:', errorMessage);
 
-        // Se temos uma requisição original e ainda não tentamos renovar
-        if (originalRequest && !originalRequest._retryCsrf) {
-          originalRequest._retryCsrf = true;
-
-          // Tentar uma requisição GET para forçar o backend a enviar novo cookie
-          try {
-            await apiClient.get('/auth/refresh-csrf', {
-              // Esta rota deve existir no backend para forçar refresh do CSRF
-              // ou usar uma rota existente que sempre retorna CSRF cookie
-            });
-
-            // Obter novo token do cookie
-            const newCsrfToken = getCsrfTokenFromCookie();
-
-            if (newCsrfToken && requiresCsrfToken(originalRequest.method)) {
-              originalRequest.headers['X-CSRF-Token'] = newCsrfToken;
-            }
-
-            // Retentar a requisição original
-            return apiClient(originalRequest);
-          } catch (refreshError) {
-            console.error('Falha ao atualizar CSRF token:', refreshError);
-            // Não tentamos novamente, propagamos o erro
-          }
-        }
-
-        // Se chegou aqui, não conseguimos resolver o CSRF
+        // Se chegou aqui, não conseguimos resolver o CSRF automaticamente
         const csrfError = new Error(
           'Erro de segurança (CSRF). Por favor, recarregue a página e tente novamente.'
         ) as any;
@@ -172,26 +146,24 @@ apiClient.interceptors.response.use(
         // Check if it's actually a CSRF error (Flask-JWT-Extended sends 401 for Missing CSRF)
         if (errorMessage?.includes('CSRF') || errorMessage?.includes('csrf') || errorMessage?.includes('Missing CSRF token')) {
           console.warn('Erro CSRF (401) detectado:', errorMessage);
-          // Treat as CSRF retry flow same as Case 1
-          if (originalRequest && !originalRequest._retryCsrf) {
-            originalRequest._retryCsrf = true;
-            try {
-              await apiClient.get('/auth/refresh-csrf');
-              const newCsrfToken = getCsrfTokenFromCookie();
-              if (newCsrfToken && requiresCsrfToken(originalRequest.method)) {
-                originalRequest.headers['X-CSRF-Token'] = newCsrfToken;
-              }
-              return apiClient(originalRequest);
-            } catch (refreshError) {
-              console.error('Falha ao atualizar CSRF token (401):', refreshError);
-            }
-          }
           // If retry failed, do NOT redirect to login for Disconnect actions, per user request
           if (originalRequest?.url?.includes('/disconnect')) {
             console.warn('Disconnect falhou por CSRF/Auth. Redirecionando para Dashboard conforme solicitado.');
             window.location.href = '/#/dashboard';
             return Promise.reject(new Error('Falha ao desconectar. Redirecionando...'));
           }
+        }
+
+        // SPECIAL HANDLING: Drive endpoints
+        // If a drive endpoint returns 401, it might just mean the provider token is invalid/missing,
+        // NOT that the user is logged out. We want the component to handle this (show connect screen).
+        if (originalRequest?.url?.includes('/drive/files') || originalRequest?.url?.includes('/drive/microsoft/files')) {
+          console.warn('401 on Drive endpoint - suppressing global redirect to allow component handling');
+          // We reject with the error so the component's catch block receives it
+          const driveError = new Error('Drive authentication failed') as any;
+          driveError.response = error.response;
+          driveError.isDriveAuthError = true;
+          return Promise.reject(driveError);
         }
 
         console.warn('Sessão expirada ou inválida');
@@ -270,12 +242,6 @@ export const authService = {
     // Após login, verificar se temos CSRF token
     if (!hasCsrfToken()) {
       console.warn('CSRF token não encontrado após login');
-      // Podemos tentar uma requisição para obter CSRF se necessário
-      try {
-        await apiClient.get('/auth/session'); // Rota que deve retornar CSRF cookie
-      } catch (error) {
-        console.warn('Não foi possível verificar CSRF após login:', error);
-      }
     }
 
     return response;
@@ -336,18 +302,7 @@ export const authService = {
     window.location.href = `${API_BASE_URL}/auth2/microsoft/login`;
   },
 
-  // Verificar status da sessão
-  checkSession: async (): Promise<{ valid: boolean; user?: any }> => {
-    try {
-      const response = await apiClient.get<any, any>('/auth/session');
-      return { valid: true, user: response.user };
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        return { valid: false };
-      }
-      throw error;
-    }
-  },
+
 
   // Verificar se temos CSRF token (útil para debug)
   checkCsrfToken: (): { hasToken: boolean; tokenName?: string } => {

@@ -68,33 +68,41 @@ export const OneDrive: React.FC = () => {
         }
     };
 
+    const [forceShowConnect, setForceShowConnect] = useState(false);
+
     const fetchFiles = async (folderId: string | null) => {
         setLoading(true);
         setError(null);
+        setForceShowConnect(false);
         try {
             const response = await oneDriveService.listFiles(folderId || undefined);
 
             if (response.success) {
                 setFiles(response.files || []);
-                // setIsConnected(true);
             } else {
                 throw new Error('Failed to load files');
             }
         } catch (err: any) {
-            // If forbidden (403), it means we need to authenticate
+            // Check for specific drive auth error from api.ts or 401 status
             if (
+                err.isDriveAuthError ||
+                err.response?.status === 401 ||
+                err.message?.includes('401') ||
                 err.message?.includes('403') ||
                 (err.response && err.response.status === 403) ||
                 err.message?.includes('access not authorized')
             ) {
-                // Don't set error message for 403, just show connect screen
-                setError('Access expired. Please reconnect.');
+                // Show connect screen instead of error message
+                setForceShowConnect(true);
+                // Optionally clear files to be safe
+                setFiles([]);
             } else {
                 let msg = err.message || 'Error connecting to OneDrive';
 
                 // Parse friendly message from raw backend tuple string if present
                 if (msg.includes('invalid_grant') || msg.includes('expired or revoked')) {
                     msg = 'Your OneDrive session has expired. Please disconnect and reconnect.';
+                    setForceShowConnect(true);
                 } else if (msg.startsWith("('") && msg.includes("', {")) {
                     // Start cleaning up the Python tuple string to just get the message
                     try {
@@ -109,10 +117,6 @@ export const OneDrive: React.FC = () => {
                 }
 
                 setError(msg);
-                // Keep isConnected true if it was a transient network error, 
-                // but if we want to be strict, we might set it to false. 
-                // For now, let's assume if it fails it might be auth related or server error.
-                // If it's a hard error, we might want to check if it's auth related.
             }
         } finally {
             setLoading(false);
@@ -169,7 +173,7 @@ export const OneDrive: React.FC = () => {
         );
     }, [files, searchQuery]);
 
-    const showFiles = isConnected;
+    const showFiles = isConnected && !forceShowConnect;
 
     return (
         <div className="flex h-screen bg-[#f8f9fa] dark:bg-gray-900 overflow-hidden -mt-16 pt-16">
